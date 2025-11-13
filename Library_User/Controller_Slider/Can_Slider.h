@@ -29,7 +29,7 @@ typedef union {
     uint8_t raw;
     struct {
         uint8_t forward : 1;  // Bit0
-        uint8_t reserve : 1;  // Bit1
+        uint8_t reverse : 1;  // Bit1
         uint8_t brake   : 1;  // Bit2
         uint8_t enable  : 1;  // Bit3
         uint8_t reserved: 4;  // Bit4-7
@@ -47,7 +47,7 @@ extern Can_Slider_VCU_t can_slider_vcu;
 /* Các trạng thái hiện tại nhận được từ Controller Slider */
 typedef struct {
 	uint8_t forward;
-	uint8_t reserve;
+	uint8_t reverse;
 	uint8_t brake;
 } Can_Vehicle_Mode_Slider_t;
 
@@ -76,14 +76,30 @@ extern Can_Slider_t can_slider;
 
 /* Error Code */
 typedef enum {
+	/*Nếu báo động vẫn còn sau khi động cơ đã được tháo ra, hãy trả lại nhà máy để sửa chữa. 
+	Nếu không, hãy thay thế động cơ.*/
 	OVER_CURRENT = 3,
+	/*Vui lòng kiểm tra xem quạt có hoạt động bình thường không và thông gió có thông suốt không.*/
 	CONTROLLER_TEMP_HIGH = 4,
+	/*Bộ mã hóa động cơ đã kích hoạt báo động.
+	Động cơ hoặc mạch mã hóa của bộ điều khiển bị hở, hoặc bộ mã hóa động cơ bị hỏng.*/
 	MOTOR_ENCODER_ERROR = 7,
+	/*Đường truyền thông CAN bất thường.
+	Vui lòng kiểm tra xem kết nối của đường truyền thông CAN có chính xác không và
+	các tin nhắn điều khiển do VCU gửi đi có chính xác không.*/
 	COMMUNICATION_ERROR = 8,
+	/*Pin yếu, cần sạc ngay*/
 	UNDER_VOLTAGE_BATTERY = 9,
+	/*1. Vui lòng kiểm tra xem bộ pin có bình thường không;
+	2. Vui lòng cố gắng giảm chức năng
+	phanh tái tạo càng nhiều càng tốt.*/
 	OVER_VOLTAGE_BATTERY = 10,
+	/*Đóng động cơ để nguội hoặc
+	Tăng chế độ làm mát động cơ.*/
 	MOTOR_TEMP_HIGH = 11,
+	/*Báo lỗi nhiệt độ động cơ (mạch dây cảm biến nhiệt độ động cơ bị đứt hoặc bị chạm chập).*/
 	MOTOR_TEMP_SENSOR_ERROR = 12,
+	/*Vui lòng kiểm tra xem kết nối chân ga có chính xác không; nếu bị hỏng, cần phải mang đi sửa chữa.*/
 	ACCELERATOR_FAULT = 13
 } Can_Slider_Error_Code_t;
 

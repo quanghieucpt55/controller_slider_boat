@@ -1,3 +1,6 @@
-../Library_User/Display/Src/Display_Curtis.c:19:6:display_can_info_1	7
-../Library_User/Display/Src/Display_Curtis.c:67:6:display_can_info_2	12
-../Library_User/Display/Src/Display_Curtis.c:110:6:display_throttle_control	31
+../Library_User/Display/Src/Display_Curtis.c:28:6:display_can_info_1	7
+../Library_User/Display/Src/Display_Curtis.c:76:6:display_can_info_2	12
+../Library_User/Display/Src/Display_Curtis.c:119:6:display_throttle_control	31
+../Library_User/Display/Src/Display_Curtis.c:231:6:display_bms_info	11
+../Library_User/Display/Src/Display_Curtis.c:286:6:process_button	59
+../Library_User/Display/Src/Display_Curtis.c:478:6:process_menu	5

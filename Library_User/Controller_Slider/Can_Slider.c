@@ -52,7 +52,7 @@ void Can_Slider_Process(Can_Slider_t *can_slider, CAN_RxHeaderTypeDef *hdr_ptr, 
 
 Can_Slider_Error_Code_t Can_Slider_1_Process(Can_Slider_1_t *slider_1, CAN_RxHeaderTypeDef *hdr, uint8_t *d) {
 	slider_1->vehicle_mode.forward = d[0];
-	slider_1->vehicle_mode.reserve = d[1];
+	slider_1->vehicle_mode.reverse = d[1];
 	slider_1->vehicle_mode.brake = d[2];
 	slider_1->motor_rpm = GET_U16_LE(&d[3]);
 	slider_1->motor_temp = d[5]-40;

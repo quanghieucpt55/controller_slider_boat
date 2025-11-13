@@ -9,12 +9,27 @@
 
 #include "ST7565.h"
 #include "Can_Slider.h"
+#include "jikong_can.h"
+
+
+// Button timing constants
+#define BUTTON_LONG_PRESS_TIME_MS  300
+#define ENTER_LONG_PRESS_TIME_MS  500
+
+extern volatile uint8_t button_down_pressed;
+extern volatile uint8_t button_enter_pressed;
+extern volatile uint8_t button_up_pressed;
+
+extern volatile uint32_t button_down_time;
+extern volatile uint32_t button_enter_time;
+extern volatile uint32_t button_up_time;
 
 // Menu hệ thống
 typedef enum {
     MENU_CAN_INFO_1 = 0, // Hiển thị các thông số giám sát Slider1
 	MENU_CAN_INFO_2 = 1, // Hiển thị các thông số giám sát Slider2
     MENU_THROTTLE_CONTROL = 2, // Chỉnh sửa throttle command
+    MENU_BMS_INFO = 3, // Hiển thị các thông số giám sát BMS
 } menu_state_t;
 
 typedef enum {
@@ -30,17 +45,10 @@ typedef enum {
     THROTTLE_PARAM_ENABLE = 3      // Thông số Enable
 } throttle_param_t;
 
-extern menu_state_t current_menu;
-extern throttle_mode_t throttle_mode;
-extern throttle_param_t throttle_selected_param;
-
-// Biến lưu giá trị chỉnh tạm thời
-extern uint16_t throttle_value;
-extern Can_Vehicle_Mode_VCU_t throttle_vehicle_mode_temp; // Biến trung gian cho vehicle_mode
-
 // Các hàm display
 void display_can_info_1(void);
 void display_can_info_2(void);
 void display_throttle_control(void);
+void display_bms_info(void);
 
 #endif /* DISPLAY_INC_DIPSLAY_CURTIS_H_ */
