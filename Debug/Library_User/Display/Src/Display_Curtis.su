@@ -1,0 +1,3 @@
+../Library_User/Display/Src/Display_Curtis.c:19:6:display_can_info_1	112	static
+../Library_User/Display/Src/Display_Curtis.c:67:6:display_can_info_2	168	static
+../Library_User/Display/Src/Display_Curtis.c:110:6:display_throttle_control	152	static
