@@ -120,14 +120,20 @@ int main(void)
   while (1)
   {
     static uint32_t display_time = 0;
+    static uint32_t send_time = 0;
 
     process_button();
 
-    // Cập nhật màn hình mỗi 500ms
-    if (HAL_GetTick() - display_time > 500) {
+    // Gửi gói tin điều khiển mỗi 500ms
+    if (HAL_GetTick() - display_time > 200) {
       display_time = HAL_GetTick();
       process_menu();
+    }
+
+    if (HAL_GetTick() - send_time > 500) {
+      send_time = HAL_GetTick();
       Can_Vcu_Send_Slider(&hcan1);
+      led_process();
     }
     /* USER CODE END WHILE */
 
@@ -302,6 +308,7 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -309,7 +316,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_6, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
@@ -317,8 +327,15 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PC4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  /*Configure GPIO pins : PE2 PE3 PE6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PC4 PC5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -397,6 +414,23 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
       default:
           break;
   }
+}
+
+void led_process(void) {
+  if ((bms.almInfo.cell_overvolt > 0 || 
+    bms.almInfo.cell_undervolt > 0 || 
+    bms.almInfo.temp_high > 0 || 
+    bms.almInfo.soc_low > 0 ||
+    bms.almInfo.comm_fault > 0 ||
+    bms.almInfo.dchg_oc > 0 ||
+    bms.almInfo.chg_oc > 0 ||
+    bms.almInfo.temp_low > 0 ||
+    bms.almInfo.delta_over > 0) 
+    || can_slider.slider_1.error_code > 0) {
+      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_SET);
+    } else {
+      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET);
+    }
 }
 
 /* USER CODE END 4 */

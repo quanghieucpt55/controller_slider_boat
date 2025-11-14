@@ -22,7 +22,16 @@ Can_Slider_VCU_t throttle_vehicle_mode_temp = {0};
 menu_state_t current_menu = MENU_CAN_INFO_1;
 
 throttle_mode_t throttle_mode = THROTTLE_NAVIGATION;
-throttle_param_t throttle_selected_param = THROTTLE_PARAM_SPEED;
+throttle_param_t throttle_selected_param = THROTTLE_PARAM_BRAKE;
+
+io_mode_t io_mode = IO_NAVIGATION;
+io_param_t io_selected_param = IO_PARAM_AC;
+// Biến trung gian để lưu trạng thái relay khi đang chỉnh sửa
+struct {
+    uint8_t ac_state;
+    uint8_t fan_state;
+    uint8_t light_state;
+} io_states_temp = {0};
 
 // Hàm hiển thị thông tin CAN lên màn hình ST7565
 void display_can_info_1(void) {
@@ -81,6 +90,7 @@ void display_can_info_2(void) {
     char error_string[100];
     switch (can_slider.slider_1.error_code) 
     {
+        case 0: strcpy(error_string, "Error: None"); break;
         case OVER_CURRENT: strcpy(error_string, "Error: Cur_Over"); break;
         case CONTROLLER_TEMP_HIGH: strcpy(error_string, "Error: Con_Temp_Hi"); break;
         case MOTOR_ENCODER_ERROR: strcpy(error_string, "Error: Enc_Error"); break;
@@ -133,7 +143,7 @@ void display_throttle_control(void) {
     char target_text[20];
     sprintf(target_text, "Speed: %d rpm", (display_vehicle_mode->speed_high << 8) | display_vehicle_mode->speed_low);
     uint8_t speed_x = (LCD_WIDTH/2)-((strlen(target_text)/2)*6);
-    uint8_t speed_y = 20;
+    uint8_t speed_y = 5;
     ST7565_drawstring_anywhere(speed_x, speed_y, target_text);
     
     // Vẽ indicator cho Speed nếu đang được chọn
@@ -155,7 +165,7 @@ void display_throttle_control(void) {
         strcpy(direction_text, "Direction: Neutral");
     }
     uint8_t direction_x = (LCD_WIDTH/2)-((strlen(direction_text)/2)*6);
-    uint8_t direction_y = 5;
+    uint8_t direction_y = 20;
     ST7565_drawstring_anywhere(direction_x, direction_y, direction_text);
     
     // Vẽ indicator cho Direction nếu đang được chọn
@@ -238,45 +248,221 @@ void display_bms_info(void) {
     // Vẽ viền xung quanh màn hình
     ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
     
-    // Tiêu đề
-    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("BMS Info")/2)*6), 8, "BMS Info");
+    char max_cell_text[20];
+    sprintf(max_cell_text, "MaxCell:%dmV", bms.cellVolt.max_cell_mV);
+    ST7565_drawstring_anywhere(5, 5, max_cell_text);
+
+    char max_cell_no_text[20];
+    sprintf(max_cell_no_text, "No.%d", bms.cellVolt.max_cell_no);
+    ST7565_drawstring_anywhere(95, 5, max_cell_no_text);
+
+    char min_cell_text[20];
+    sprintf(min_cell_text, "MinCell:%dmV", bms.cellVolt.min_cell_mV);
+    ST7565_drawstring_anywhere(5, 20, min_cell_text);
+
+    char min_cell_no_text[20];
+    sprintf(min_cell_no_text, "No.%d", bms.cellVolt.min_cell_no);
+    ST7565_drawstring_anywhere(95, 20, min_cell_no_text);
     
     // Hàng 1: Điện áp tổng (V)
     char voltage_text[20];
-    sprintf(voltage_text, "Voltage: %.1f V", bms.batt1.voltage_V);
-    ST7565_drawstring_anywhere(5, 20, voltage_text);
+    sprintf(voltage_text, "Vol:%.1fV", bms.batt1.voltage_V);
+    ST7565_drawstring_anywhere(5, 35, voltage_text);
     
     // Hàng 2: Dòng điện (A)
     char current_text[20];
-    sprintf(current_text, "Current: %.1f A", bms.batt1.current_A);
-    ST7565_drawstring_anywhere(5, 30, current_text);
+    sprintf(current_text, "Cur:%.1fA", bms.batt1.current_A);
+    ST7565_drawstring_anywhere(65, 35, current_text);
     
     // Hàng 3: SOC (%)
     char soc_text[20];
-    sprintf(soc_text, "SOC: %u%%", bms.batt1.soc_percent);
-    ST7565_drawstring_anywhere(5, 40, soc_text);
+    sprintf(soc_text, "SOC:%u", bms.batt1.soc_percent);
+    ST7565_drawstring_anywhere(90, 50, soc_text);
     
     // Hàng 4: Nhiệt độ trung bình
     char temp_text[25];
-    sprintf(temp_text, "Temp: %d/%d/%d C", 
+    sprintf(temp_text, "Temp:%d/%d/%d", 
             bms.cellTemp.max_temp_C, 
             bms.cellTemp.min_temp_C, 
             bms.cellTemp.avg_temp_C);
     ST7565_drawstring_anywhere(5, 50, temp_text);
+
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
+void display_alm_bms(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+
+    // Vẽ viền xung quanh màn hình
+    ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
+
+    uint8_t count_alm = 0;
+    uint8_t name_y[2] = {50, 20};  // Tọa độ y cho tên lỗi (lỗi 1, lỗi 2)
+    uint8_t level_y[2] = {35, 5};  // Tọa độ y cho level lỗi (lỗi 1, lỗi 2)
+
+     //Hiển thị cảnh báo nếu có (tối đa 2 lỗi)
+     if (count_alm < 2 && bms.almInfo.cell_overvolt) {
+    	 ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Over Voltage")/2)*6), name_y[count_alm], "ALM: Over Voltage");
+         char level_text[15];
+         sprintf(level_text, "Level: %d", bms.almInfo.cell_overvolt);
+         ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+         count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.cell_undervolt) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Under Voltage")/2)*6), name_y[count_alm], "ALM: Under Voltage");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.cell_undervolt);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.temp_high) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: High Temperature")/2)*6), name_y[count_alm], "ALM: High Temperature");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.temp_high);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.temp_low) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Low Temperature")/2)*6), name_y[count_alm], "ALM: Low Temperature");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.temp_low);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.delta_over) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Delta Over")/2)*6), name_y[count_alm], "ALM: Delta Over");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.delta_over);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.dchg_oc) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Discharge Over Current")/2)*6), name_y[count_alm], "ALM: Discharge Over Current");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.dchg_oc);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.chg_oc) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Charge Over Current")/2)*6), name_y[count_alm], "ALM: Charge Over Current");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.chg_oc);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.soc_low) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: SOC Low")/2)*6), name_y[count_alm], "ALM: SOC Low");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.soc_low);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+     if (count_alm < 2 && bms.almInfo.comm_fault) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Communication Fault")/2)*6), name_y[count_alm], "ALM: Communication Fault");
+        char level_text[15];
+        sprintf(level_text, "Level: %d", bms.almInfo.comm_fault);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
+        count_alm++;
+     }
+
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
+void display_io_info(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
     
-    // Hiển thị cảnh báo nếu có (ở góc phải trên)
-    if (bms.almInfo.cell_overvolt > 0 || 
-        bms.almInfo.cell_undervolt > 0 || 
-        bms.almInfo.temp_high > 0 || 
-        bms.almInfo.soc_low > 0 ||
-        bms.almInfo.comm_fault > 0 ||
-        bms.almInfo.dchg_oc > 0 ||
-        bms.almInfo.chg_oc > 0 ||
-        bms.almInfo.temp_low > 0 ||
-        bms.almInfo.delta_over > 0) {
+    // Biến để kiểm tra nhấp nháy (dựa trên tick)
+    uint32_t current_time = HAL_GetTick();
+    uint8_t blink_state = ((current_time / 500) % 2); // Nhấp nháy mỗi 500ms
+    
+    // Sử dụng biến trung gian nếu đang ở chế độ edit
+    uint8_t ac_state_display, fan_state_display, light_state_display;
+    if (io_mode == IO_EDIT_VALUE) {
+        ac_state_display = io_states_temp.ac_state;
+        fan_state_display = io_states_temp.fan_state;
+        light_state_display = io_states_temp.light_state;
+    } else {
+        ac_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
+        fan_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
+        light_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
+    }
+    
+    // Hiển thị A/C
+    char ac_text[20];
+    if (ac_state_display) {
+        strcpy(ac_text, "A/C: ON");
+    } else {
+        strcpy(ac_text, "A/C: OFF");
+    }
+    uint8_t ac_x = (LCD_WIDTH/2)-((strlen(ac_text)/2)*6);
+    uint8_t ac_y = 35;
+    ST7565_drawstring_anywhere(ac_x, ac_y, ac_text);
+    
+    // Vẽ indicator cho A/C nếu đang được chọn
+    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_AC) {
         if (blink_state) {
-            ST7565_drawstring_anywhere(100, 5, "ALM!");
+            ST7565_drawrect(ac_x - 2, ac_y - 1, strlen(ac_text) * 6 + 4, 10, 1);
         }
+    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_AC) {
+        // Chế độ edit giá tri, hiển thị viền
+        ST7565_drawrect(ac_x - 2, ac_y - 1, strlen(ac_text) * 6 + 4, 10, 1);
+    }
+    
+    // Hiển thị Fan
+    char fan_text[20];
+    if (fan_state_display) {
+        strcpy(fan_text, "Fan: ON");
+    } else {
+        strcpy(fan_text, "Fan: OFF");
+    }
+    uint8_t fan_x = (LCD_WIDTH/2)-((strlen(fan_text)/2)*6);
+    uint8_t fan_y = 20;
+    ST7565_drawstring_anywhere(fan_x, fan_y, fan_text);
+    
+    // Vẽ indicator cho Fan nếu đang được chọn
+    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_FAN) {
+        if (blink_state) {
+            ST7565_drawrect(fan_x - 2, fan_y - 1, strlen(fan_text) * 6 + 4, 10, 1);
+        }
+    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_FAN) {
+        ST7565_drawrect(fan_x - 2, fan_y - 1, strlen(fan_text) * 6 + 4, 10, 1);
+    }
+    
+    // Hiển thị Light
+    char light_text[20];
+    if (light_state_display) {
+        strcpy(light_text, "Light: ON");
+    } else {
+        strcpy(light_text, "Light: OFF");
+    }
+    uint8_t light_x = (LCD_WIDTH/2)-((strlen(light_text)/2)*6);
+    uint8_t light_y = 5;
+    ST7565_drawstring_anywhere(light_x, light_y, light_text);
+    
+    // Vẽ indicator cho Light nếu đang được chọn
+    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_LIGHT) {
+        if (blink_state) {
+            ST7565_drawrect(light_x - 2, light_y - 1, strlen(light_text) * 6 + 4, 10, 1);
+        }
+    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_LIGHT) {
+        ST7565_drawrect(light_x - 2, light_y - 1, strlen(light_text) * 6 + 4, 10, 1);
+    }
+    
+    // Mode indicator
+    if (io_mode == IO_EDIT_SELECT) {
+        // Chế độ chọn relay
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("UP/DN:Sel EN:Edit")/2)*6), 50, "UP/DN:Sel EN:Edit");
+    } else if (io_mode == IO_EDIT_VALUE) {
+        // Chế độ chỉnh sửa trạng thái
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("UP/DN:Toggle EN:Save")/2)*6), 50, "UP/DN:Toggle EN:Save");
+    } else {
+        // Chế độ navigation
+        ST7565_drawrect((LCD_WIDTH/2)-((strlen("ENTER: Edit Mode")/2)*6) - 2, 48, strlen("ENTER: Edit Mode") * 6 + 4, 12, 1);
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ENTER: Edit Mode")/2)*6), 50, "ENTER: Edit Mode");
     }
     
     // Cập nhật màn hình
@@ -297,7 +483,7 @@ void process_button(void) {
                 if (throttle_selected_param > 0) {
                     throttle_selected_param--;
                 } else {
-                    throttle_selected_param = THROTTLE_PARAM_ENABLE; // Quay vòng
+                    throttle_selected_param = THROTTLE_PARAM_SPEED; // Quay vòng
                 }
                 debug_print("Parameter selection changed\r\n");
             } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
@@ -310,7 +496,7 @@ void process_button(void) {
                         throttle_vehicle_mode_temp.speed_high = throttle_value >> 8;
                     }
                 } else if (throttle_selected_param == THROTTLE_PARAM_DIRECTION) {
-                    // Chuyển direction: Forward -> Reserve -> Forward (bỏ qua Neutral)
+                    // Chuyển direction: Forward -> Reserve -> Forward
                     if (throttle_vehicle_mode_temp.vehicle_mode.forward && !throttle_vehicle_mode_temp.vehicle_mode.reverse) {
                         throttle_vehicle_mode_temp.vehicle_mode.forward = 0;
                         throttle_vehicle_mode_temp.vehicle_mode.reverse = 1;
@@ -331,12 +517,35 @@ void process_button(void) {
                 }
             } else {
                 // Chế độ navigation - chuyển menu forward
-                current_menu = (current_menu + 1) % 4;
+                current_menu = (current_menu + 1) % 6;
+                debug_print("Menu switched forward\r\n");
+            }
+        } else if (current_menu == MENU_IO_INFO) {
+            if (io_mode == IO_EDIT_SELECT) {
+                // Chế độ chọn relay - chọn relay trước đó
+                if (io_selected_param > 0) {
+                    io_selected_param--;
+                } else {
+                    io_selected_param = IO_PARAM_LIGHT; // Quay vòng
+                }
+                debug_print("IO parameter selection changed\r\n");
+            } else if (io_mode == IO_EDIT_VALUE) {
+                // Chế độ chỉnh sửa trạng thái - toggle relay
+                if (io_selected_param == IO_PARAM_AC) {
+                    io_states_temp.ac_state = !io_states_temp.ac_state;
+                } else if (io_selected_param == IO_PARAM_FAN) {
+                    io_states_temp.fan_state = !io_states_temp.fan_state;
+                } else if (io_selected_param == IO_PARAM_LIGHT) {
+                    io_states_temp.light_state = !io_states_temp.light_state;
+                }
+            } else {
+                // Chế độ navigation - chuyển menu forward
+                current_menu = (current_menu + 1) % 6;
                 debug_print("Menu switched forward\r\n");
             }
         } else {
-            // Không phải menu throttle - chuyển menu forward
-            current_menu = (current_menu + 1) % 4;
+            // Không phải menu throttle hoặc IO - chuyển menu forward
+            current_menu = (current_menu + 1) % 6;
             debug_print("Menu switched forward\r\n");
         }
     } else if (button_up_pressed && HAL_GetTick() - button_up_time > BUTTON_LONG_PRESS_TIME_MS) {
@@ -359,10 +568,10 @@ void process_button(void) {
         if (current_menu == MENU_THROTTLE_CONTROL) {
             if (throttle_mode == THROTTLE_EDIT_SELECT) {
                 // Chế độ chọn thông số - chọn thông số tiếp theo
-                if (throttle_selected_param < THROTTLE_PARAM_ENABLE) {
+                if (throttle_selected_param < THROTTLE_PARAM_SPEED) {
                     throttle_selected_param++;
                 } else {
-                    throttle_selected_param = THROTTLE_PARAM_SPEED; // Quay vòng
+                    throttle_selected_param = THROTTLE_PARAM_BRAKE; // Quay vòng
                 }
                 debug_print("Parameter selection changed\r\n");
             } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
@@ -396,12 +605,35 @@ void process_button(void) {
                 }
             } else {
                 // Chế độ navigation - chuyển menu backward
-                current_menu = (current_menu - 1 + 4) % 4;
+                current_menu = (current_menu - 1 + 6) % 6;
+                debug_print("Menu switched backward\r\n");
+            }
+        } else if (current_menu == MENU_IO_INFO) {
+            if (io_mode == IO_EDIT_SELECT) {
+                // Chế độ chọn relay - chọn relay tiếp theo
+                if (io_selected_param < IO_PARAM_LIGHT) {
+                    io_selected_param++;
+                } else {
+                    io_selected_param = IO_PARAM_AC; // Quay vòng
+                }
+                debug_print("IO parameter selection changed\r\n");
+            } else if (io_mode == IO_EDIT_VALUE) {
+                // Chế độ chỉnh sửa trạng thái - toggle relay
+                if (io_selected_param == IO_PARAM_AC) {
+                    io_states_temp.ac_state = !io_states_temp.ac_state;
+                } else if (io_selected_param == IO_PARAM_FAN) {
+                    io_states_temp.fan_state = !io_states_temp.fan_state;
+                } else if (io_selected_param == IO_PARAM_LIGHT) {
+                    io_states_temp.light_state = !io_states_temp.light_state;
+                }
+            } else {
+                // Chế độ navigation - chuyển menu backward
+                current_menu = (current_menu - 1 + 6) % 6;
                 debug_print("Menu switched backward\r\n");
             }
         } else {
-            // Không phải menu throttle - chuyển menu backward
-            current_menu = (current_menu - 1 + 4) % 4;
+            // Không phải menu throttle hoặc IO - chuyển menu backward
+            current_menu = (current_menu - 1 + 6) % 6;
             debug_print("Menu switched backward\r\n");
         }
     } else if (button_down_pressed && HAL_GetTick() - button_down_time > BUTTON_LONG_PRESS_TIME_MS) {
@@ -428,7 +660,7 @@ void process_button(void) {
             if (throttle_mode == THROTTLE_NAVIGATION) {
                 // Lần đầu ấn ENTER - vào chế độ chọn thông số
                 throttle_mode = THROTTLE_EDIT_SELECT;
-                throttle_selected_param = THROTTLE_PARAM_SPEED; // Reset về thông số đầu tiên
+                throttle_selected_param = THROTTLE_PARAM_BRAKE; // Reset về thông số đầu tiên
                 debug_print("Entered throttle select mode\r\n");
             } else if (throttle_mode == THROTTLE_EDIT_SELECT) {
                 // Ấn ENTER lần 2 - vào chế độ chỉnh sửa giá trị
@@ -453,6 +685,34 @@ void process_button(void) {
                 }
                 throttle_mode = THROTTLE_EDIT_SELECT; // Quay về chế độ chọn
             }
+        } else if (current_menu == MENU_IO_INFO) {
+            if (io_mode == IO_NAVIGATION) {
+                // Lần đầu ấn ENTER - vào chế độ chọn relay
+                io_mode = IO_EDIT_SELECT;
+                io_selected_param = IO_PARAM_AC; // Reset về relay đầu tiên
+                debug_print("Entered IO select mode\r\n");
+            } else if (io_mode == IO_EDIT_SELECT) {
+                // Ấn ENTER lần 2 - vào chế độ chỉnh sửa trạng thái
+                io_mode = IO_EDIT_VALUE;
+                // Khởi tạo biến trung gian từ giá trị GPIO hiện tại
+                io_states_temp.ac_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
+                io_states_temp.fan_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
+                io_states_temp.light_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
+                debug_print("Entered IO edit value mode\r\n");
+            } else if (io_mode == IO_EDIT_VALUE) {
+                // Ấn ENTER lần 3 - lưu giá trị và áp dụng vào GPIO
+                if (io_selected_param == IO_PARAM_AC) {
+                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, io_states_temp.ac_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                    debug_print("AC state saved\r\n");
+                } else if (io_selected_param == IO_PARAM_FAN) {
+                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, io_states_temp.fan_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                    debug_print("Fan state saved\r\n");
+                } else if (io_selected_param == IO_PARAM_LIGHT) {
+                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, io_states_temp.light_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                    debug_print("Light state saved\r\n");
+                }
+                io_mode = IO_EDIT_SELECT; // Quay về chế độ chọn
+            }
         }
     } else if (button_enter_pressed && 
                 HAL_GetTick() - button_enter_time > ENTER_LONG_PRESS_TIME_MS && 
@@ -460,9 +720,16 @@ void process_button(void) {
         // Long press ENTER - thoát khỏi chế độ edit (chỉ trigger một lần)
         if (current_menu == MENU_THROTTLE_CONTROL) {
             if (throttle_mode == THROTTLE_EDIT_SELECT || throttle_mode == THROTTLE_EDIT_VALUE) {
-                // Thoát về chế độ navigation
+                // Thoát về chế độ điều hướng
                 throttle_mode = THROTTLE_NAVIGATION;
                 debug_print("Exited throttle edit mode\r\n");
+                enter_long_press_handled = 1; // Đánh dấu đã xử lý
+            }
+        } else if (current_menu == MENU_IO_INFO) {
+            if (io_mode == IO_EDIT_SELECT || io_mode == IO_EDIT_VALUE) {
+                // Thoát về chế độ điều hướng
+                io_mode = IO_NAVIGATION;
+                debug_print("Exited IO edit mode\r\n");
                 enter_long_press_handled = 1; // Đánh dấu đã xử lý
             }
         }
@@ -490,6 +757,12 @@ case MENU_THROTTLE_CONTROL:
     break;
 case MENU_BMS_INFO:
     display_bms_info();
+    break;
+case MENU_ALM_BMS:
+    display_alm_bms();
+    break;
+case MENU_IO_INFO:
+    display_io_info();
     break;
 default:
     display_can_info_1();

@@ -75,9 +75,9 @@ void BMS_Jikong_Process(BMS_Jikong_t *bms, CAN_RxHeaderTypeDef *hdr, uint8_t *d)
 		* ---------------------------------------------------------- */
 		case ID_CELL_VOLT:
 			bms->cellVolt.max_cell_mV = GET_U16_LE(&d[0]); // mV cell cao nhất
-			//bms->cellVolt.max_cell_no = d[2];              // Số thứ tự cell cao nhất
+			bms->cellVolt.max_cell_no = d[4];              // Số thứ tự cell cao nhất
 			bms->cellVolt.min_cell_mV = GET_U16_LE(&d[2]); // mV cell thấp nhất
-			//bms->cellVolt.min_cell_no = d[5];              // Số thứ tự cell thấp nhất
+			bms->cellVolt.min_cell_no = d[5];              // Số thứ tự cell thấp nhất
 			break;
 
 		/* ----------------------------------------------------------
