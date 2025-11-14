@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "display_curtis.h"
+#include "Led_Error.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -415,24 +416,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
           break;
   }
 }
-
-void led_process(void) {
-  if ((bms.almInfo.cell_overvolt > 0 || 
-    bms.almInfo.cell_undervolt > 0 || 
-    bms.almInfo.temp_high > 0 || 
-    bms.almInfo.soc_low > 0 ||
-    bms.almInfo.comm_fault > 0 ||
-    bms.almInfo.dchg_oc > 0 ||
-    bms.almInfo.chg_oc > 0 ||
-    bms.almInfo.temp_low > 0 ||
-    bms.almInfo.delta_over > 0) 
-    || can_slider.slider_1.error_code > 0) {
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_SET);
-    } else {
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET);
-    }
-}
-
 /* USER CODE END 4 */
 
 /**

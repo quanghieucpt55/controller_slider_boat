@@ -13,6 +13,7 @@ RM := rm -rf
 -include USB_DEVICE/App/subdir.mk
 -include Middlewares/ST/STM32_USB_Device_Library/Core/Src/subdir.mk
 -include Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/subdir.mk
+-include Library_User/Led_Error/subdir.mk
 -include Library_User/Display/Src/subdir.mk
 -include Library_User/Controller_Slider/subdir.mk
 -include Library_User/BMS_Jihong/subdir.mk

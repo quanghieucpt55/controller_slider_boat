@@ -28,6 +28,7 @@ Drivers/STM32F4xx_HAL_Driver/Src \
 Library_User/BMS_Jihong \
 Library_User/Controller_Slider \
 Library_User/Display/Src \
+Library_User/Led_Error \
 Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src \
 USB_DEVICE/App \
