@@ -367,6 +367,10 @@ void display_alm_bms(void) {
         count_alm++;
      }
 
+     if (count_alm == 0) {
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: No Alarm")/2)*6), 25, "ALM: No Alarm");
+     }
+
     // Cập nhật màn hình
     updateDisplay();
 }
@@ -469,6 +473,274 @@ void display_io_info(void) {
     updateDisplay();
 }
 
+void display_bms_batt_st2(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    // Vẽ viền xung quanh màn hình
+    ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
+    
+    // Dung lượng còn lại
+    char cap_remain_text[25];
+    sprintf(cap_remain_text, "Cap Remain: %.1f Ah", bms.batt2.cap_remain_Ah);
+    ST7565_drawstring_anywhere(5, 5, cap_remain_text);
+    
+    // Dung lượng đầy
+    char cap_full_text[25];
+    sprintf(cap_full_text, "Cap Full: %.1f Ah", bms.batt2.cap_full_Ah);
+    ST7565_drawstring_anywhere(5, 20, cap_full_text);
+    
+    // Dung lượng đã xả tích lũy
+    char cycle_cap_text[30];
+    sprintf(cycle_cap_text, "Cycle Cap: %.1f Ah", bms.batt2.cycle_cap_Ah);
+    ST7565_drawstring_anywhere(5, 35, cycle_cap_text);
+    
+    // Số chu kỳ sạc/xả
+    char cycle_count_text[20];
+    sprintf(cycle_count_text, "Cycles: %u", bms.batt2.cycle_count);
+    ST7565_drawstring_anywhere(5, 50, cycle_count_text);
+    
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
+void display_bms_all_temp(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    // Vẽ viền xung quanh màn hình
+    ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
+    
+    // Hiển thị 5 cảm biến nhiệt độ
+    char temp_text[30];
+    uint8_t y_pos = 5;
+    uint8_t sensor_count = 0;
+    
+    for (int i = 0; i < 5; i++) {
+        if (bms.allTemp.mask & (1 << i)) {  // Kiểm tra bitmask
+            if (bms.allTemp.temp[i] != -127) {  // Cảm biến tồn tại
+                sprintf(temp_text, "Temp%d: %d C", i + 1, bms.allTemp.temp[i]);
+                ST7565_drawstring_anywhere(5, y_pos, temp_text);
+                y_pos += 15;
+                sensor_count++;
+                if (sensor_count >= 3) break;  // Tối đa 3 dòng trên màn hình
+            } 
+        } else {
+            char not_available_text[20];
+            sprintf(not_available_text, "Temp%d: N/A", i + 1);
+            ST7565_drawstring_anywhere(5, y_pos, not_available_text);
+            y_pos += 15;
+            sensor_count++;
+            if (sensor_count >= 3) break;  // Tối đa 3 dòng trên màn hình
+        }
+    }
+    
+    char mask_text[20];
+    sprintf(mask_text, "Mask: 0x%02X", bms.allTemp.mask);
+    ST7565_drawstring_anywhere(5, 50, mask_text);
+    
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
+void display_bms_err_info(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    // Vẽ viền xung quanh màn hình
+    ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
+    
+    uint8_t y_pos = 5;
+    uint8_t error_count = 0;
+    char error_text[30];
+    
+    // Hiển thị các lỗi (tối đa 4 lỗi trên màn hình)
+    if (bms.bmsErrInfo.line_res_high) {
+        strcpy(error_text, "Line Res High");
+        ST7565_drawstring_anywhere(5, y_pos, error_text);
+        y_pos += 12;
+        error_count++;
+    }
+    if (bms.bmsErrInfo.mos_overtemp && error_count < 4) {
+        strcpy(error_text, "MOS Over Temp");
+        ST7565_drawstring_anywhere(5, y_pos, error_text);
+        y_pos += 12;
+        error_count++;
+    }
+    if (bms.bmsErrInfo.cell_count_mismatch && error_count < 4) {
+        strcpy(error_text, "Cell Count Err");
+        ST7565_drawstring_anywhere(5, y_pos, error_text);
+        y_pos += 12;
+        error_count++;
+    }
+    if (bms.bmsErrInfo.cur_sensor_fault && error_count < 4) {
+        strcpy(error_text, "Cur Sensor Err");
+        ST7565_drawstring_anywhere(5, y_pos, error_text);
+        y_pos += 12;
+        error_count++;
+    }
+    if (bms.bmsErrInfo.chg_mos_fault && error_count < 4) {
+        strcpy(error_text, "Chg MOS Fault");
+        ST7565_drawstring_anywhere(5, y_pos, error_text);
+        y_pos += 12;
+        error_count++;
+    }
+    if (bms.bmsErrInfo.dchg_mos_fault && error_count < 4) {
+        strcpy(error_text, "Dchg MOS Fault");
+        ST7565_drawstring_anywhere(5, y_pos, error_text);
+        y_pos += 12;
+        error_count++;
+    }
+    
+    // Nếu không có lỗi
+    if (error_count == 0) {
+        strcpy(error_text, "No Errors");
+        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(error_text)/2)*6), 25, error_text);
+    }
+    
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
+void display_bms_info_sys(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    // Vẽ viền xung quanh màn hình
+    ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
+
+    char tile_text[] = "BMS INFO";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(tile_text)/2)*6), 50, tile_text);
+    
+    // Thời gian chạy (giây)
+    char runtime_text[30];
+    sprintf(runtime_text, "BMSRuntime: %u", bms.info.runtime_s);
+    ST7565_drawstring_anywhere(5, 5, runtime_text);
+    
+    // Dòng sưởi
+    char heat_current_text[25];
+    sprintf(heat_current_text, "Heat Current: %.2f A", bms.info.heat_current_A);
+    ST7565_drawstring_anywhere(5, 20, heat_current_text);
+    
+    // SOH (State of Health)
+    char soh_text[20];
+    sprintf(soh_text, "SOH: %u %%", bms.info.soh_percent);
+    ST7565_drawstring_anywhere(5, 35, soh_text);
+    
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
+void display_bms_sw_sta(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    // Vẽ viền xung quanh màn hình
+    ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
+    
+    // Trạng thái MOS sạc
+    char chg_mos_text[20];
+    strcpy(chg_mos_text, bms.swSta.chgMOS ? "ChgMOS:ON" : "ChgMOS:OFF");
+    ST7565_drawstring_anywhere(5, 5, chg_mos_text);
+    
+    // Trạng thái MOS xả
+    char dchg_mos_text[20];
+    strcpy(dchg_mos_text, bms.swSta.dchgMOS ? "DchgMOS: ON" : "DchgMOS: OFF");
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(dchg_mos_text)/2)*6), 50, dchg_mos_text);
+    
+    // Trạng thái cân bằng
+    char balance_text[20];
+    strcpy(balance_text, bms.swSta.balance ? "Balance:ON" : "Balance:OFF");
+    ST7565_drawstring_anywhere(5, 35, balance_text);
+    
+    // Trạng thái sưởi
+    char heat_text[20];
+    strcpy(heat_text, bms.swSta.heat ? "Heat:ON" : "Heat:OFF");
+    ST7565_drawstring_anywhere(70, 5, heat_text);
+    
+    // Trạng thái sạc đã cắm
+    char chg_plug_text[20];
+    strcpy(chg_plug_text, bms.swSta.chgPlug ? "ChgPlug: ON" : "ChgPlug: OFF");
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(chg_plug_text)/2)*6), 20, chg_plug_text);
+    
+    // Trạng thái ACC
+    char acc_text[20];
+    strcpy(acc_text, bms.swSta.acc ? "ACC:ON" : "ACC:OFF");
+    ST7565_drawstring_anywhere(80, 35, acc_text);
+    
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
+static void draw_cellvol_page(uint8_t start_cell)
+{
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+
+    for (uint8_t row = 0; row < 4; row++) {
+        uint8_t cell_a = start_cell + row * 2;
+        uint8_t cell_b = cell_a + 1;
+
+        uint16_t mv_a = (cell_a < 25) ? bms.cellArray.cell_mV[cell_a] : 0;
+        uint16_t mv_b = (cell_b < 25) ? bms.cellArray.cell_mV[cell_b] : 0;
+
+        char line[30];
+        if (mv_a == 0)
+            sprintf(line, "C%02u:----mV", cell_a + 1);
+        else
+            sprintf(line, "C%02u:%4dmV", cell_a + 1, mv_a);
+
+        char line_b[30];
+        if (mv_b == 0)
+            sprintf(line_b, "C%02u:----mV", cell_b + 1);
+        else
+            sprintf(line_b, "C%02u:%4dmV", cell_b + 1, mv_b);
+
+        ST7565_drawstring_anywhere(5, 8 + row * 14, line);
+        ST7565_drawstring_anywhere(68, 8 + row * 14, line_b);
+    }
+
+    updateDisplay();
+}
+
+void display_bms_cellvol(void) {
+    draw_cellvol_page(0);   // Cell 1-8
+}
+
+void display_bms_cellvol_2(void) {
+    draw_cellvol_page(8);   // Cell 9-16
+}
+
+void display_bms_chg_info(void) {
+    // Clear display buffer
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    // Vẽ viền xung quanh màn hình
+    ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
+    
+    // Điện áp yêu cầu sạc
+    char chg_volt_text[25];
+    sprintf(chg_volt_text, "Chg Volt: %.1f V", bms.chgInfo.chg_volt_V);
+    ST7565_drawstring_anywhere(5, 5, chg_volt_text);
+    
+    // Dòng yêu cầu sạc
+    char chg_curr_text[25];
+    sprintf(chg_curr_text, "Chg Curr: %.1f A", bms.chgInfo.chg_curr_A);
+    ST7565_drawstring_anywhere(5, 20, chg_curr_text);
+    
+    // Trạng thái bộ sạc
+    char chg_dev_text[25];
+    sprintf(chg_dev_text, "Chg Dev: %s", bms.chgInfo.chg_dev_sw ? "OFF" : "ON");
+    ST7565_drawstring_anywhere(5, 35, chg_dev_text);
+    
+    // Chế độ sạc/sưởi
+    char mode_text[25];
+    sprintf(mode_text, "Mode: %s", bms.chgInfo.chg_and_heat ? "Heat" : "Charge");
+    ST7565_drawstring_anywhere(5, 50, mode_text);
+    
+    // Cập nhật màn hình
+    updateDisplay();
+}
+
 void process_button(void) {
     // Xử lý button actions từ interrupt
     static uint8_t last_button_enter = 0;
@@ -517,7 +789,7 @@ void process_button(void) {
                 }
             } else {
                 // Chế độ navigation - chuyển menu forward
-                current_menu = (current_menu + 1) % 6;
+                current_menu = (current_menu + 1) % 14;
                 debug_print("Menu switched forward\r\n");
             }
         } else if (current_menu == MENU_IO_INFO) {
@@ -540,12 +812,12 @@ void process_button(void) {
                 }
             } else {
                 // Chế độ navigation - chuyển menu forward
-                current_menu = (current_menu + 1) % 6;
+                current_menu = (current_menu + 1) % 14;
                 debug_print("Menu switched forward\r\n");
             }
         } else {
             // Không phải menu throttle hoặc IO - chuyển menu forward
-            current_menu = (current_menu + 1) % 6;
+            current_menu = (current_menu + 1) % 14;
             debug_print("Menu switched forward\r\n");
         }
     } else if (button_up_pressed && HAL_GetTick() - button_up_time > BUTTON_LONG_PRESS_TIME_MS) {
@@ -605,7 +877,7 @@ void process_button(void) {
                 }
             } else {
                 // Chế độ navigation - chuyển menu backward
-                current_menu = (current_menu - 1 + 6) % 6;
+                current_menu = (current_menu - 1 + 14) % 14;
                 debug_print("Menu switched backward\r\n");
             }
         } else if (current_menu == MENU_IO_INFO) {
@@ -628,12 +900,12 @@ void process_button(void) {
                 }
             } else {
                 // Chế độ navigation - chuyển menu backward
-                current_menu = (current_menu - 1 + 6) % 6;
+                current_menu = (current_menu - 1 + 14) % 14;
                 debug_print("Menu switched backward\r\n");
             }
         } else {
             // Không phải menu throttle hoặc IO - chuyển menu backward
-            current_menu = (current_menu - 1 + 6) % 6;
+            current_menu = (current_menu - 1 + 14) % 14;
             debug_print("Menu switched backward\r\n");
         }
     } else if (button_down_pressed && HAL_GetTick() - button_down_time > BUTTON_LONG_PRESS_TIME_MS) {
@@ -763,6 +1035,30 @@ case MENU_ALM_BMS:
     break;
 case MENU_IO_INFO:
     display_io_info();
+    break;
+case MENU_BMS_BATT_ST2:
+    display_bms_batt_st2();
+    break;
+case MENU_BMS_ALL_TEMP:
+    display_bms_all_temp();
+    break;
+case MENU_BMS_ERR_INFO:
+    display_bms_err_info();
+    break;
+case MENU_BMS_INFO_SYS:
+    display_bms_info_sys();
+    break;
+case MENU_BMS_SW_STA:
+    display_bms_sw_sta();
+    break;
+case MENU_BMS_CELLVOL:
+    display_bms_cellvol();
+    break;
+case MENU_BMS_CELLVOL_2:
+    display_bms_cellvol_2();
+    break;
+case MENU_BMS_CHG_INFO:
+    display_bms_chg_info();
     break;
 default:
     display_can_info_1();
