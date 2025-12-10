@@ -120,22 +120,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    static uint32_t display_time = 0;
-    static uint32_t send_time = 0;
-
+    
     process_button();
-
-    // Gửi gói tin điều khiển mỗi 500ms
-    if (HAL_GetTick() - display_time > 200) {
-      display_time = HAL_GetTick();
-      process_menu();
-    }
-
-    if (HAL_GetTick() - send_time > 500) {
-      send_time = HAL_GetTick();
-      Can_Vcu_Send_Slider(&hcan1);
-      led_process();
-    }
+    led_process();
+    VCU_StateTask();
+    process_menu();
+    
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -333,6 +323,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PE4 PE5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC4 PC5 */

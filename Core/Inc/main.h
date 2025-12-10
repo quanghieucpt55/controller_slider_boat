@@ -37,6 +37,7 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 extern SPI_HandleTypeDef hspi2;
+extern CAN_HandleTypeDef hcan1;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -59,7 +60,10 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
-
+#define RELAY_SELECT_MODE_Pin GPIO_PIN_2
+#define RELAY_SELECT_MODE_GPIO_Port GPIOE
+#define RELAY_CONTACTOR_Pin GPIO_PIN_3
+#define RELAY_CONTACTOR_GPIO_Port GPIOE
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

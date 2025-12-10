@@ -152,7 +152,7 @@ typedef struct {
 typedef struct {
     float chg_volt_V;      // Điện áp yêu cầu sạc (0.1V/bit)
     float chg_curr_A;      // Dòng yêu cầu sạc (0.1A/bit)
-    uint8_t chg_dev_sw;           // Trạng thái sạc: 0 = bật, 1 = tắt
+    uint8_t chg_dev_sw;           // Công tắc sạc: 0 = bật, 1 = tắt
     uint8_t chg_and_heat;             // 0 = chế độ sạc, 1 = chế độ sưởi
 } BMS_ChgInfo_t;
 

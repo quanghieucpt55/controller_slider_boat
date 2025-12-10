@@ -8,9 +8,7 @@
 #define DISPLAY_INC_DIPSLAY_CURTIS_H_
 
 #include "ST7565.h"
-#include "Can_Slider.h"
-#include "jikong_can.h"
-
+#include "VCU_State.h" 
 
 // Button timing constants
 #define BUTTON_LONG_PRESS_TIME_MS  300
@@ -23,24 +21,6 @@ extern volatile uint8_t button_up_pressed;
 extern volatile uint32_t button_down_time;
 extern volatile uint32_t button_enter_time;
 extern volatile uint32_t button_up_time;
-
-// Menu hệ thống
-typedef enum {
-    MENU_CAN_INFO_1 = 0, // Hiển thị các thông số giám sát Slider1
-	MENU_CAN_INFO_2 = 1, // Hiển thị các thông số giám sát Slider2
-    MENU_THROTTLE_CONTROL = 2, // Chỉnh sửa throttle command
-    MENU_BMS_INFO = 3, // Hiển thị các thông số giám sát BMS (BATT_ST1, CELL_VOLT, CELL_TEMP)
-	MENU_ALM_BMS = 4, // Hiển thị cảnh báo BMS
-    MENU_IO_INFO = 5, // Hiển thị các thông số giám sát IO
-    MENU_BMS_BATT_ST2 = 6, // Hiển thị dung lượng và số chu kỳ
-    MENU_BMS_ALL_TEMP = 7, // Hiển thị 5 cảm biến nhiệt độ
-    MENU_BMS_ERR_INFO = 8, // Hiển thị lỗi bên trong BMS
-    MENU_BMS_INFO_SYS = 9, // Hiển thị thông tin hệ thống (runtime, SOH)
-    MENU_BMS_SW_STA = 10, // Hiển thị trạng thái MOS
-    MENU_BMS_CELLVOL = 11, // Hiển thị điện áp cell 1-8
-    MENU_BMS_CELLVOL_2 = 12, // Hiển thị điện áp cell 9-16
-    MENU_BMS_CHG_INFO = 13, // Hiển thị thông tin yêu cầu sạc
-} menu_state_t;
 
 typedef enum {
     THROTTLE_NAVIGATION = 0,  // Chế độ điều hướng
@@ -62,12 +42,27 @@ typedef enum {
 } io_mode_t;
 
 typedef enum {
-    IO_PARAM_AC = 0,    // Relay A/C (PE2)
-    IO_PARAM_FAN = 1,   // Relay Fan (PE3)
+    IO_PARAM_SELECT_MODE = 0,    // Relay Select Mode (PE2)
+    IO_PARAM_CONTACTOR = 1,   // Relay Contactor (PE3)
     IO_PARAM_LIGHT = 2  // Relay Light (PE6)
 } io_param_t;
 
-// Các hàm display
+// Chế độ hiển thị menu
+typedef enum {
+    MENU_MODE_OVERVIEW = 0,  // Chế độ tổng quan (hiển thị thông tin cơ bản)
+    MENU_MODE_DETAIL = 1     // Chế độ chi tiết (hiển thị đầy đủ các menu con)
+} menu_display_mode_t;
+
+// Các hàm display menu chính (overview)
+void display_main_init(void);
+void display_main_waiting(void);
+void display_main_can(void);
+void display_main_physical(void);
+void display_main_charge(void);
+void display_main_idle(void);
+void display_main_error(void);
+
+// Các hàm display menu chi tiết (detail)
 void display_can_info_1(void);
 void display_can_info_2(void);
 void display_throttle_control(void);

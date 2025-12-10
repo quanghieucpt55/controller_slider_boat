@@ -13,9 +13,11 @@ RM := rm -rf
 -include USB_DEVICE/App/subdir.mk
 -include Middlewares/ST/STM32_USB_Device_Library/Core/Src/subdir.mk
 -include Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/subdir.mk
+-include Library_User/VCU_State/subdir.mk
 -include Library_User/Led_Error/subdir.mk
 -include Library_User/Display/Src/subdir.mk
 -include Library_User/Controller_Slider/subdir.mk
+-include Library_User/Charger/subdir.mk
 -include Library_User/BMS_Jihong/subdir.mk
 -include Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
@@ -60,6 +62,9 @@ default.size.stdout \
 OBJDUMP_LIST += \
 Controller_Slider.list \
 
+OBJCOPY_HEX += \
+Controller_Slider.hex \
+
 
 # All Target
 all: main-build
@@ -83,12 +88,17 @@ Controller_Slider.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEP
 	@echo 'Finished building: $@'
 	@echo ' '
 
+Controller_Slider.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "Controller_Slider.hex"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 # Other Targets
 clean:
-	-$(RM) Controller_Slider.elf Controller_Slider.list Controller_Slider.map default.size.stdout
+	-$(RM) Controller_Slider.elf Controller_Slider.hex Controller_Slider.list Controller_Slider.map default.size.stdout
 	-@echo ' '
 
-secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
+secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_HEX)
 
 fail-specified-linker-script-missing:
 	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'
