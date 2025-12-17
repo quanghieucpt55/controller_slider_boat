@@ -342,9 +342,10 @@ static vcu_state_t VCU_StateHandleInit(void)
 	/* Nếu BMS OK, Contactor ON + Slider OK, No Charger → chuyển thẳng sang Physical MODE
 	 * Đây là đường đi nhanh để bắt đầu chạy ngay khi mọi thứ đã sẵn sàng
 	 */
-	if (vcu_ctx.inputs.bms_ok &&
-	    !vcu_ctx.inputs.charger_plugged &&
-		HAL_GetTick() - vcu_ctx.last_transition_tick > 1000) {
+//	if (vcu_ctx.inputs.bms_ok &&
+//	    !vcu_ctx.inputs.charger_plugged &&
+//		HAL_GetTick() - vcu_ctx.last_transition_tick > 1000) {
+		if (HAL_GetTick() - vcu_ctx.last_transition_tick > 1000) {
 		vcu_ctx.inputs.contactor_request = true;
 		if (vcu_ctx.inputs.slider_ok) {
 			return VCU_STATE_PHYSICAL;
@@ -658,7 +659,7 @@ menu_mask_t VCU_GetAllowedDetailMenuMask(void)
 	case VCU_STATE_INIT:
 		/* INIT: Chỉ menu thông tin cơ bản */
 		mask = MENU_DETAIL_BMS_INFO | MENU_DETAIL_ALM_BMS | MENU_DETAIL_IO_INFO|
-			   MENU_DETAIL_BMS_ERR_INFO | MENU_DETAIL_CAN_INFO_2;
+			   MENU_DETAIL_BMS_ERR_INFO | MENU_DETAIL_CAN_INFO_2 | MENU_DETAIL_NETWORK;
 		break;
 		
 	case VCU_STATE_WAITING:
@@ -668,7 +669,7 @@ menu_mask_t VCU_GetAllowedDetailMenuMask(void)
 		       MENU_DETAIL_ALM_BMS | MENU_DETAIL_IO_INFO | MENU_DETAIL_BMS_BATT_ST2 | 
 		       MENU_DETAIL_BMS_ALL_TEMP | MENU_DETAIL_BMS_ERR_INFO | MENU_DETAIL_BMS_INFO_SYS | 
 		       MENU_DETAIL_BMS_SW_STA | MENU_DETAIL_BMS_CELLVOL | MENU_DETAIL_BMS_CELLVOL_2 | 
-		       MENU_DETAIL_BMS_CHG_INFO;
+		       MENU_DETAIL_BMS_CHG_INFO | MENU_DETAIL_NETWORK;
 		break;
 		
 	case VCU_STATE_CAN:
@@ -677,7 +678,7 @@ menu_mask_t VCU_GetAllowedDetailMenuMask(void)
 		       MENU_DETAIL_BMS_INFO | MENU_DETAIL_ALM_BMS | MENU_DETAIL_IO_INFO | MENU_DETAIL_BMS_BATT_ST2 | 
 		       MENU_DETAIL_BMS_ALL_TEMP | MENU_DETAIL_BMS_ERR_INFO | MENU_DETAIL_BMS_INFO_SYS | 
 		       MENU_DETAIL_BMS_SW_STA | MENU_DETAIL_BMS_CELLVOL | MENU_DETAIL_BMS_CELLVOL_2 | 
-		       MENU_DETAIL_BMS_CHG_INFO;
+		       MENU_DETAIL_BMS_CHG_INFO | MENU_DETAIL_NETWORK;
 		break;
 		
 	case VCU_STATE_CHARGE:
@@ -685,23 +686,23 @@ menu_mask_t VCU_GetAllowedDetailMenuMask(void)
 		mask = MENU_DETAIL_BMS_CHG_INFO | MENU_DETAIL_BMS_INFO | MENU_DETAIL_BMS_BATT_ST2 | 
 		       MENU_DETAIL_BMS_ALL_TEMP | MENU_DETAIL_BMS_SW_STA | MENU_DETAIL_BMS_CELLVOL | 
 		       MENU_DETAIL_BMS_CELLVOL_2 | MENU_DETAIL_ALM_BMS | MENU_DETAIL_BMS_ERR_INFO | 
-		       MENU_DETAIL_BMS_INFO_SYS | MENU_DETAIL_IO_INFO;
+		       MENU_DETAIL_BMS_INFO_SYS | MENU_DETAIL_IO_INFO | MENU_DETAIL_NETWORK;
 		break;
 		
 	case VCU_STATE_IDLE:
 		/* IDLE: Chỉ menu BMS và sạc và IO*/
 		mask = MENU_DETAIL_BMS_INFO | MENU_DETAIL_ALM_BMS | MENU_DETAIL_IO_INFO 
-				| MENU_DETAIL_BMS_BATT_ST2 | MENU_DETAIL_BMS_ALL_TEMP | MENU_DETAIL_BMS_ERR_INFO;
+				| MENU_DETAIL_BMS_BATT_ST2 | MENU_DETAIL_BMS_ALL_TEMP | MENU_DETAIL_BMS_ERR_INFO | MENU_DETAIL_NETWORK;
 		break;
 		
 	case VCU_STATE_ERROR:
 		/* ERROR: Chỉ menu lỗi và thông tin cơ bản */
-		mask = MENU_DETAIL_ALM_BMS | MENU_DETAIL_BMS_ERR_INFO | MENU_DETAIL_CAN_INFO_2 | MENU_DETAIL_IO_INFO;
+		mask = MENU_DETAIL_ALM_BMS | MENU_DETAIL_BMS_ERR_INFO | MENU_DETAIL_CAN_INFO_2 | MENU_DETAIL_IO_INFO | MENU_DETAIL_NETWORK;
 		break;
 		
 	default:
 		/* Mặc định: Tất cả menu */
-		mask = 0x3FFF; /* Tất cả 14 bit */
+		mask = 0x7FFF; /* Tất cả 15 bit */
 		break;
 	}
 	

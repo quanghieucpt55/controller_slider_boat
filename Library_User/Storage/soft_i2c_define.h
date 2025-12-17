@@ -1,0 +1,19 @@
+#ifndef _SOFT_I2C_DEFINE_H_
+#define _SOFT_I2C_DEFINE_H_
+
+typedef enum E_I2C_SOFT_CODE E_I2C_SOFT_CODE;
+enum E_I2C_SOFT_CODE
+{
+    I2C_SOFT_SUCCESSS,
+    I2C_SOFT_TIMEOUT
+};
+
+#define SOFT_I2C_WRITE 0
+#define SOFT_I2C_READ 1
+
+#define SOFT_I2C_ACK 1
+#define SOFT_I2C_NACK 0
+
+
+#endif
+

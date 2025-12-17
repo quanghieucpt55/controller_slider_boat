@@ -9,6 +9,8 @@
 
 #include "ST7565.h"
 #include "VCU_State.h" 
+#include "sim.h"
+#include "swconfig.h"
 
 // Button timing constants
 #define BUTTON_LONG_PRESS_TIME_MS  300
@@ -77,5 +79,6 @@ void display_bms_sw_sta(void);
 void display_bms_cellvol(void);
 void display_bms_cellvol_2(void);
 void display_bms_chg_info(void);
+void display_network(void);
 
 #endif /* DISPLAY_INC_DIPSLAY_CURTIS_H_ */

@@ -1,0 +1,8 @@
+../Library_User/Storage/extern_rom.c:10:6:ExRom_Init	8	static
+../Library_User/Storage/extern_rom.c:15:6:ExRom_Earse	8	static
+../Library_User/Storage/extern_rom.c:20:9:ExRom_CalculationChecksum	24	static
+../Library_User/Storage/extern_rom.c:30:10:ExRom_ReadWithCheckSum	40	static
+../Library_User/Storage/extern_rom.c:53:10:ExRom_SaveWithCheckSum	32	static
+../Library_User/Storage/extern_rom.c:68:10:ExRom_CalculatorCRC	32	static
+../Library_User/Storage/extern_rom.c:85:10:ExRom_SaveParam_WithCRC16	32	static
+../Library_User/Storage/extern_rom.c:109:9:ExRom_ReadParam_WithCRC16	32	static

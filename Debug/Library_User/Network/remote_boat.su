@@ -1,0 +1,3 @@
+../Library_User/Network/remote_boat.c:28:9:IsOnMsg_BoatResponseRemote	4	static
+../Library_User/Network/remote_boat.c:41:6:WriteBoat_Response_Remote	40	static
+../Library_User/Network/remote_boat.c:63:21:RemoteBoat_ExcuteCommand	32	static

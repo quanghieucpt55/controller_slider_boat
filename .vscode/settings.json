@@ -1,6 +1,13 @@
 {
   "files.associations": {
     "can_slider.h": "c",
-    "main.h": "c"
+    "main.h": "c",
+    "display_curtis.h": "c",
+    "sim.h": "c",
+    "swconfig.h": "c",
+    "vcu_state.h": "c",
+    "st7565.h": "c",
+    "dwt_delay.h": "c",
+    "extern_rom.h": "c"
   }
 }

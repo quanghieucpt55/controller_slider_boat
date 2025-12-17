@@ -82,6 +82,7 @@ typedef enum {
     MENU_DETAIL_BMS_CELLVOL = 0x0800,    // Bit 11: Hiển thị điện áp cell 1-8
     MENU_DETAIL_BMS_CELLVOL_2 = 0x1000,  // Bit 12: Hiển thị điện áp cell 9-16
     MENU_DETAIL_BMS_CHG_INFO = 0x2000,   // Bit 13: Hiển thị thông tin yêu cầu sạc
+	MENU_DETAIL_NETWORK = 0x4000,       // Bit 14: Hiển thị trạng thái mạng
 } menu_detail_t;
 
 typedef menu_detail_t menu_state_t;

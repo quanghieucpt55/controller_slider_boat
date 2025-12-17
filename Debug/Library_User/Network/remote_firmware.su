@@ -1,0 +1,4 @@
+../Library_User/Network/remote_firmware.c:28:9:IsOnMsg_FirmResponseRemote	4	static
+../Library_User/Network/remote_firmware.c:42:6:FirmWrite_Response_Remote	40	static
+../Library_User/Network/remote_firmware.c:64:6:FrmRemote_SaveConfig	32	static
+../Library_User/Network/remote_firmware.c:81:21:RemoteFirm_ExcuteCommand	72	static
