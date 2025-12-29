@@ -134,7 +134,7 @@ int main(void)
   ExRom_Init();
   Flash_Init();
   RealTime_Init();
-  //BoatEventLog_Init();
+  BoatEventLog_Init();
   Network_Init();
   Sim_Init();
   BMS_Jikong_Init(&hcan1);
