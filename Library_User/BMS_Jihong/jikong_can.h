@@ -123,6 +123,7 @@ typedef struct {
    uint8_t dchg_temp_high;       // nhiệt xả cao
    uint8_t chg_mos_fault;        // lỗi MOS sạc
    uint8_t dchg_mos_fault;       // lỗi MOS xả
+   uint32_t raw; // Thông tin lỗi bên trong raw
 } BMS_BmsErrInfo_t;
 
 /* 6.8 BMS_INFO - Thông tin chung hệ thống (ID: 0x18F428F4) */
@@ -152,7 +153,7 @@ typedef struct {
 typedef struct {
     float chg_volt_V;      // Điện áp yêu cầu sạc (0.1V/bit)
     float chg_curr_A;      // Dòng yêu cầu sạc (0.1A/bit)
-    uint8_t chg_dev_sw;           // Trạng thái sạc: 0 = bật, 1 = tắt
+    uint8_t chg_dev_sw;           // Công tắc sạc: 0 = bật, 1 = tắt
     uint8_t chg_and_heat;             // 0 = chế độ sạc, 1 = chế độ sưởi
 } BMS_ChgInfo_t;
 

@@ -293,9 +293,7 @@ void ST7565_fillcircle(uint8_t x0, uint8_t y0, uint8_t r, uint8_t color)
 // Update the physical display with the contents of the display buffer
 void updateDisplay()
 {
-	ST7565_command(CMD_SET_ADC_NORMAL);
-	ST7565_command(CMD_SET_COM_NORMAL);
-    ST7565_command(CMD_SET_DISP_START_LINE);
+  ST7565_command(CMD_SET_DISP_START_LINE);
   for (uint8_t page = 0; page < LCD_HEIGHT / 8; page++) {
     // Set the page address
     ST7565_command(CMD_SET_PAGE | page);
@@ -313,7 +311,7 @@ void updateDisplay()
 
 void ST7565_setpixel(uint8_t x, uint8_t y, uint8_t color)
 {  // Calculate the index into the display buffer
-  uint16_t index = (y / 8) * LCD_WIDTH + x;
+  uint16_t index = (y / 8) * LCD_WIDTH + (x + 2);
 
   // Set the pixel color in the buffer
   if (color == 1) {
@@ -330,6 +328,7 @@ void ST7565_init(void)
 
 	// GPIO pins are configured in main.c
 	// pin_config();                       // configure I/O pins
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(port_CS, cog_CS, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(port_RS, cog_RS, GPIO_PIN_RESET);
 
@@ -368,14 +367,14 @@ void ST7565_init(void)
 
 
 	ST7565_command(CMD_DISPLAY_ON);
-	// ADC select
+  
 	ST7565_command(CMD_SET_ALLPTS_NORMAL);
-	// SHL select
-	ST7565_command(CMD_SET_COM_REVERSE);
 
 	ST7565_set_brightness(0x15);  // Giảm contrast
 
 	memset(displayBuffer, 0, LCD_BUFFER_SIZE); // for clearing the display buffer
+
+  ST7565_clear();
 
 	ST7565_updateBoundingBox(0, 0, LCD_WIDTH-1, LCD_HEIGHT-1);
 }

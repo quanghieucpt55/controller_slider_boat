@@ -1,0 +1,15 @@
+../Library_User/Storage/soft_i2c_1.c:10:6:SoftWire1_i2cDelay	1
+../Library_User/Storage/soft_i2c_1.c:14:6:SoftWire1_sclHi	1
+../Library_User/Storage/soft_i2c_1.c:28:6:SoftWire1_sdaHi	1
+../Library_User/Storage/soft_i2c_1.c:41:6:SoftWire1_sclLo	1
+../Library_User/Storage/soft_i2c_1.c:54:6:SoftWire1_sdaLo	1
+../Library_User/Storage/soft_i2c_1.c:66:9:SoftI2C_Sda_1_Read	1
+../Library_User/Storage/soft_i2c_1.c:71:6:SoftWire1_Init	1
+../Library_User/Storage/soft_i2c_1.c:77:6:SoftWire1_Start	1
+../Library_User/Storage/soft_i2c_1.c:88:6:SoftWire1_Stop	1
+../Library_User/Storage/soft_i2c_1.c:99:17:SoftWire1_ReadAck	4
+../Library_User/Storage/soft_i2c_1.c:124:17:SoftWire1_WriteByte	3
+../Library_User/Storage/soft_i2c_1.c:143:6:SoftWire1_SendAck	1
+../Library_User/Storage/soft_i2c_1.c:153:6:SoftWire1_sendNack	1
+../Library_User/Storage/soft_i2c_1.c:164:9:SoftWire1_readByte	4
+../Library_User/Storage/soft_i2c_1.c:188:17:SoftWire1_SendStart	2

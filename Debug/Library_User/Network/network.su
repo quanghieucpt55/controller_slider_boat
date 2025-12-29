@@ -1,0 +1,9 @@
+../Library_User/Network/network.c:23:6:Network_Init	8	static
+../Library_User/Network/network.c:34:9:NetworkConfig_Save	8	static
+../Library_User/Network/network.c:46:8:Network_CheckInterfaceStatus	16	static
+../Library_User/Network/network.c:56:6:Network_TaskSendImmediate	8	static
+../Library_User/Network/network.c:65:6:Network_Supervision	8	static
+../Library_User/Network/network.c:75:9:Network_GetCurrentInterface	4	static
+../Library_User/Network/network.c:80:6:Network_RequireSendImmediate	4	static
+../Library_User/Network/network.c:85:9:IsNetwork_Ready	4	static
+../Library_User/Network/network.c:94:10:Network_WriteConfig	16	static

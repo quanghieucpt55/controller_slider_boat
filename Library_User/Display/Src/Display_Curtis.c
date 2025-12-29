@@ -16,20 +16,133 @@ volatile uint32_t button_down_time = 0;
 volatile uint32_t button_enter_time = 0;
 volatile uint32_t button_up_time = 0;
 
-uint16_t throttle_value = 0;
+int16_t throttle_value = 0;
 Can_Slider_VCU_t throttle_vehicle_mode_temp = {0};
 
-menu_state_t current_menu = MENU_CAN_INFO_1;
+// Menu chính hiện tại (tương ứng với VCU state)
+menu_main_t current_main_menu = MENU_MAIN_INIT;
+
+// Chế độ hiển thị: overview (tổng quan) hoặc detail (chi tiết)
+menu_display_mode_t menu_display_mode = MENU_MODE_OVERVIEW;
+
+// Menu chi tiết hiện tại (khi ở chế độ detail)
+menu_detail_t current_detail_menu = MENU_DETAIL_CAN_INFO_1;
+
+// VCU state trước đó để phát hiện thay đổi
+static vcu_state_t last_vcu_state = VCU_STATE_INIT;
+
+// Hàm chuyển đổi VCU state sang menu chính tương ứng
+static menu_main_t vcu_state_to_main_menu(vcu_state_t state)
+{
+	switch (state) {
+	case VCU_STATE_INIT:
+		return MENU_MAIN_INIT;
+	case VCU_STATE_CAN:
+		return MENU_MAIN_CAN;
+	case VCU_STATE_PHYSICAL:
+		return MENU_MAIN_PHYSICAL;
+	case VCU_STATE_CHARGE:
+		return MENU_MAIN_CHARGE;
+	case VCU_STATE_ERROR:
+		return MENU_MAIN_ERROR;
+	default:
+		return MENU_MAIN_INIT;
+	}
+}
+
+// Hàm kiểm tra menu chi tiết có được phép hiển thị dựa trên VCU state (sử dụng bitmask)
+static bool is_detail_menu_allowed(menu_detail_t menu)
+{
+	menu_mask_t allowed_mask = VCU_GetAllowedDetailMenuMask();
+	/* Kiểm tra bit tương ứng với menu có được set không */
+	return (allowed_mask & menu) != 0;
+}
+
+// Hàm tìm menu chi tiết hợp lệ tiếp theo (forward) - sử dụng bitmask
+static menu_detail_t find_next_allowed_detail_menu(menu_detail_t start_menu)
+{
+	menu_mask_t allowed_mask = VCU_GetAllowedDetailMenuMask();
+	
+	// Duyệt qua tất cả các menu chi tiết (15 menu)
+	menu_detail_t menu_list[] = {
+		MENU_DETAIL_CAN_INFO_1, MENU_DETAIL_CAN_INFO_2, MENU_DETAIL_THROTTLE_CONTROL,
+		MENU_DETAIL_BMS_INFO, MENU_DETAIL_ALM_BMS, MENU_DETAIL_IO_INFO,
+		MENU_DETAIL_BMS_BATT_ST2, MENU_DETAIL_BMS_ALL_TEMP, MENU_DETAIL_BMS_ERR_INFO,
+		MENU_DETAIL_BMS_INFO_SYS, MENU_DETAIL_BMS_SW_STA, MENU_DETAIL_BMS_CELLVOL,
+		MENU_DETAIL_BMS_CELLVOL_2, MENU_DETAIL_BMS_CHG_INFO, MENU_DETAIL_NETWORK
+	};
+	
+	// Tìm vị trí menu hiện tại
+	int start_idx = -1;
+	for (int i = 0; i < 15; i++) {
+		if (menu_list[i] == start_menu) {
+			start_idx = i;
+			break;
+		}
+	}
+	
+	if (start_idx == -1) {
+		start_idx = 0; // Nếu không tìm thấy, bắt đầu từ đầu
+	}
+	
+	// Tìm menu hợp lệ tiếp theo
+	for (int i = 1; i < 15; i++) {
+		int idx = (start_idx + i) % 15;
+		if (allowed_mask & menu_list[idx]) {
+			return menu_list[idx];
+		}
+	}
+	
+	return start_menu; // Nếu không tìm thấy, giữ nguyên
+}
+
+// Hàm tìm menu chi tiết hợp lệ trước đó (backward) - sử dụng bitmask
+static menu_detail_t find_prev_allowed_detail_menu(menu_detail_t start_menu)
+{
+	menu_mask_t allowed_mask = VCU_GetAllowedDetailMenuMask();
+	
+	// Duyệt qua tất cả các menu chi tiết (15 menu)
+	menu_detail_t menu_list[] = {
+		MENU_DETAIL_CAN_INFO_1, MENU_DETAIL_CAN_INFO_2, MENU_DETAIL_THROTTLE_CONTROL,
+		MENU_DETAIL_BMS_INFO, MENU_DETAIL_ALM_BMS, MENU_DETAIL_IO_INFO,
+		MENU_DETAIL_BMS_BATT_ST2, MENU_DETAIL_BMS_ALL_TEMP, MENU_DETAIL_BMS_ERR_INFO,
+		MENU_DETAIL_BMS_INFO_SYS, MENU_DETAIL_BMS_SW_STA, MENU_DETAIL_BMS_CELLVOL,
+		MENU_DETAIL_BMS_CELLVOL_2, MENU_DETAIL_BMS_CHG_INFO, MENU_DETAIL_NETWORK
+	};
+	
+	// Tìm vị trí menu hiện tại
+	int start_idx = -1;
+	for (int i = 0; i < 15; i++) {
+		if (menu_list[i] == start_menu) {
+			start_idx = i;
+			break;
+		}
+	}
+	
+	if (start_idx == -1) {
+		start_idx = 0; // Nếu không tìm thấy, bắt đầu từ đầu
+	}
+	
+	// Tìm menu hợp lệ trước đó
+	for (int i = 1; i < 15; i++) {
+		int idx = (start_idx - i + 15) % 15;
+		if (allowed_mask & menu_list[idx]) {
+			return menu_list[idx];
+		}
+	}
+	
+	return start_menu; // Nếu không tìm thấy, giữ nguyên
+}
 
 throttle_mode_t throttle_mode = THROTTLE_NAVIGATION;
 throttle_param_t throttle_selected_param = THROTTLE_PARAM_BRAKE;
 
 io_mode_t io_mode = IO_NAVIGATION;
-io_param_t io_selected_param = IO_PARAM_AC;
+io_param_t io_selected_param = IO_PARAM_MOTOR_STATUS;
 // Biến trung gian để lưu trạng thái relay khi đang chỉnh sửa
 struct {
-    uint8_t ac_state;
-    uint8_t fan_state;
+    uint8_t disable_motor;
+    uint8_t contactor_state;
     uint8_t light_state;
 } io_states_temp = {0};
 
@@ -38,7 +151,7 @@ void display_can_info_1(void) {
     // Clear display buffer
     memset(displayBuffer, 0, LCD_BUFFER_SIZE);
 
-    // Hàng 1: Forward (trái) và Reserve (phải)
+    // Hàng 1: Forward (trái) và Reverse (phải)
     char forward_state_text[15];
     switch (can_slider.slider_1.vehicle_mode.forward)
     {
@@ -88,7 +201,7 @@ void display_can_info_2(void) {
 
     // Hiển thị lỗi
     char error_string[100];
-    switch (can_slider.slider_1.error_code) 
+    switch (can_slider.raw_err_code) 
     {
         case 0: strcpy(error_string, "Error: None"); break;
         case OVER_CURRENT: strcpy(error_string, "Error: Cur_Over"); break;
@@ -160,7 +273,7 @@ void display_throttle_control(void) {
     if (display_vehicle_mode->vehicle_mode.forward && !display_vehicle_mode->vehicle_mode.reverse) {
         strcpy(direction_text, "Direction: Forward");
     } else if (display_vehicle_mode->vehicle_mode.reverse && !display_vehicle_mode->vehicle_mode.forward) {
-        strcpy(direction_text, "Direction: Reserve");
+        strcpy(direction_text, "Direction: Reverse");
     } else {
         strcpy(direction_text, "Direction: Neutral");
     }
@@ -384,56 +497,56 @@ void display_io_info(void) {
     uint8_t blink_state = ((current_time / 500) % 2); // Nhấp nháy mỗi 500ms
     
     // Sử dụng biến trung gian nếu đang ở chế độ edit
-    uint8_t ac_state_display, fan_state_display, light_state_display;
+    uint8_t disbale_motor_state_display, contactor_state_display, light_state_display;
     if (io_mode == IO_EDIT_VALUE) {
-        ac_state_display = io_states_temp.ac_state;
-        fan_state_display = io_states_temp.fan_state;
+        disbale_motor_state_display = io_states_temp.disable_motor;
+        contactor_state_display = io_states_temp.contactor_state;
         light_state_display = io_states_temp.light_state;
     } else {
-        ac_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
-        fan_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
+        disbale_motor_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
+        contactor_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
         light_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
     }
     
-    // Hiển thị A/C
-    char ac_text[20];
-    if (ac_state_display) {
-        strcpy(ac_text, "A/C: ON");
+    // Hiển thị Disable Motor
+    char disable_motor_text[20];
+    if (disbale_motor_state_display) {
+        strcpy(disable_motor_text, "Disable Motor");
     } else {
-        strcpy(ac_text, "A/C: OFF");
+        strcpy(disable_motor_text, "Enable Motor");
     }
-    uint8_t ac_x = (LCD_WIDTH/2)-((strlen(ac_text)/2)*6);
-    uint8_t ac_y = 35;
-    ST7565_drawstring_anywhere(ac_x, ac_y, ac_text);
+    uint8_t disable_motor_x = (LCD_WIDTH/2)-((strlen(disable_motor_text)/2)*6);
+    uint8_t disable_motor_y = 35;
+    ST7565_drawstring_anywhere(disable_motor_x, disable_motor_y, disable_motor_text);
     
-    // Vẽ indicator cho A/C nếu đang được chọn
-    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_AC) {
+    // Vẽ indicator cho Disable Motor nếu đang được chọn
+    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_MOTOR_STATUS) {
         if (blink_state) {
-            ST7565_drawrect(ac_x - 2, ac_y - 1, strlen(ac_text) * 6 + 4, 10, 1);
+            ST7565_drawrect(disable_motor_x - 2, disable_motor_y - 1, strlen(disable_motor_text) * 6 + 4, 10, 1);
         }
-    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_AC) {
+    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_MOTOR_STATUS) {
         // Chế độ edit giá tri, hiển thị viền
-        ST7565_drawrect(ac_x - 2, ac_y - 1, strlen(ac_text) * 6 + 4, 10, 1);
+        ST7565_drawrect(disable_motor_x - 2, disable_motor_y - 1, strlen(disable_motor_text) * 6 + 4, 10, 1);
     }
     
-    // Hiển thị Fan
-    char fan_text[20];
-    if (fan_state_display) {
-        strcpy(fan_text, "Fan: ON");
+    // Hiển thị Contactor
+    char contactor_text[20];
+    if (contactor_state_display) {
+        strcpy(contactor_text, "Contactor: ON");
     } else {
-        strcpy(fan_text, "Fan: OFF");
+        strcpy(contactor_text, "Contactor: OFF");
     }
-    uint8_t fan_x = (LCD_WIDTH/2)-((strlen(fan_text)/2)*6);
-    uint8_t fan_y = 20;
-    ST7565_drawstring_anywhere(fan_x, fan_y, fan_text);
+    uint8_t contactor_x = (LCD_WIDTH/2)-((strlen(contactor_text)/2)*6);
+    uint8_t contactor_y = 20;
+    ST7565_drawstring_anywhere(contactor_x, contactor_y, contactor_text);
     
-    // Vẽ indicator cho Fan nếu đang được chọn
-    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_FAN) {
+    // Vẽ indicator cho Contactor nếu đang được chọn
+    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_CONTACTOR) {
         if (blink_state) {
-            ST7565_drawrect(fan_x - 2, fan_y - 1, strlen(fan_text) * 6 + 4, 10, 1);
+            ST7565_drawrect(contactor_x - 2, contactor_y - 1, strlen(contactor_text) * 6 + 4, 10, 1);
         }
-    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_FAN) {
-        ST7565_drawrect(fan_x - 2, fan_y - 1, strlen(fan_text) * 6 + 4, 10, 1);
+    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_CONTACTOR) {
+        ST7565_drawrect(contactor_x - 2, contactor_y - 1, strlen(contactor_text) * 6 + 4, 10, 1);
     }
     
     // Hiển thị Light
@@ -741,6 +854,277 @@ void display_bms_chg_info(void) {
     updateDisplay();
 }
 
+// ========== CÁC HÀM HIỂN THỊ MENU CHÍNH (OVERVIEW) ==========
+
+/**
+ * @brief Hiển thị menu INIT - Khởi tạo và tự kiểm tra
+ * Hiển thị ngắn gọn: trạng thái lỗi, trạng thái I/O
+ */
+void display_main_init(void) {
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    // Tiêu đề
+    char title_text[] = "INIT & SELF-CHECK";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    
+    // Lấy outputs từ VCU
+    const vcu_state_outputs_t *outputs = VCU_StateOutputs();
+    
+    // Trạng thái I/O
+    char io_text[30];
+    sprintf(io_text, "Contactor: %s", outputs->contactor_on ? "ON" : "OFF");
+    ST7565_drawstring_anywhere(5, 20, io_text);
+    
+    char mode_text[30];
+    sprintf(mode_text, "Mode: %s", can_slider.slider_2.control_mode ? "CAN" : "PHYS");
+    ST7565_drawstring_anywhere(5, 35, mode_text);
+    
+    // Hướng dẫn xem chi tiết
+    char hint_text[] = "ENTER: Details ERROR";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    
+    updateDisplay();
+}
+
+/**
+ * @brief Hiển thị menu WAITING - Chờ điều kiện an toàn
+ */
+void display_main_waiting(void) {
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "WAITING";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+
+    char direction_text[20];
+    if (can_slider.slider_1.vehicle_mode.forward && !can_slider.slider_1.vehicle_mode.reverse) {
+        strcpy(direction_text, "Direction: Forward");
+    } else if (can_slider.slider_1.vehicle_mode.reverse && !can_slider.slider_1.vehicle_mode.forward) {
+        strcpy(direction_text, "Direction: Reverse");
+    } else {
+        strcpy(direction_text, "Direction: Neutral");
+    }
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(direction_text)/2)*6), 20, direction_text);
+
+    char rpm_text[20];
+    sprintf(rpm_text, "RPM: %u", can_slider.slider_1.motor_rpm);
+    ST7565_drawstring_anywhere(70, 35, rpm_text);
+    
+    char mode_text[30];
+    sprintf(mode_text, "Motor: %s", vcu_ctx.outputs.disable_motor ? "DISABLE" : "ENABLE");
+    ST7565_drawstring_anywhere(5, 35, mode_text);
+    
+    char hint_text[] = "ENTER: Details";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    
+    updateDisplay();
+}
+
+/**
+ * @brief Hiển thị menu CAN MODE - Điều khiển qua CAN
+ */
+void display_main_can(void) {
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "CAN MODE";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    
+    // Thông tin cơ bản
+    char rpm_text[20];
+    sprintf(rpm_text, "RPM: %u", can_slider.slider_1.motor_rpm);
+    ST7565_drawstring_anywhere(5, 20, rpm_text);
+    
+    char volt_text[20];
+    sprintf(volt_text, "Volt: %.1fV", can_slider.slider_2.battery_voltage);
+    ST7565_drawstring_anywhere(5, 35, volt_text);
+    
+    char hint_text[] = "ENTER: Details";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    
+    updateDisplay();
+}
+
+/**
+ * @brief Hiển thị menu PHYSICAL MODE - Điều khiển vật lý
+ */
+void display_main_physical(void) {
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "PHYSICAL MODE";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    
+    // Thông tin cơ bản
+    const vcu_state_outputs_t *outputs = VCU_StateOutputs();
+    char contactor_text[20];
+    sprintf(contactor_text, "Contactor: %s", outputs->contactor_on ? "ON" : "OFF");
+    ST7565_drawstring_anywhere(5, 20, contactor_text);
+    
+    char select_text[20];
+    sprintf(select_text, "Motor: %s", outputs->disable_motor ? "DISABLE" : "ENABLE");
+    ST7565_drawstring_anywhere(5, 35, select_text);
+    
+    char hint_text[] = "ENTER: Details";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    
+    updateDisplay();
+}
+
+/**
+ * @brief Hiển thị menu CHARGE - Chế độ sạc
+ */
+void display_main_charge(void) {
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "CHARGER MODE";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    
+    // Thông tin sạc cơ bản
+    char volt_text[25];
+    sprintf(volt_text, "Voltage: %.1f V", bms.batt1.voltage_V);
+    ST7565_drawstring_anywhere(5, 20, volt_text);
+    
+    char curr_text[25];
+    sprintf(curr_text, "Current: %.1f A", bms.batt1.current_A);
+    ST7565_drawstring_anywhere(70, 20, curr_text);
+    
+    char soc_text[20];
+    sprintf(soc_text, "SOC: %u%%", bms.batt1.soc_percent);
+    ST7565_drawstring_anywhere(5, 35, soc_text);
+
+    const vcu_state_outputs_t *outputs = VCU_StateOutputs();
+    char contactor_text[20];
+    sprintf(contactor_text, "Contactor: %s", outputs->contactor_on ? "ON" : "OFF");
+    ST7565_drawstring_anywhere(70, 35, contactor_text);
+    
+    char hint_text[] = "ENTER: Details";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    
+    updateDisplay();
+}
+
+/**
+ * @brief Hiển thị menu IDLE - Chế độ chờ
+ */
+void display_main_idle(void) {
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "IDLE";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    
+    // Thông tin cơ bản
+    const vcu_state_outputs_t *outputs = VCU_StateOutputs();
+    char contactor_text[20];
+    sprintf(contactor_text, "Contactor: %s", outputs->contactor_on ? "ON" : "OFF");
+    ST7565_drawstring_anywhere(5, 20, contactor_text);
+    
+    char bms_text[20];
+    sprintf(bms_text, "Voltage: %.1fV", bms.batt1.voltage_V);
+    ST7565_drawstring_anywhere(5, 35, bms_text);
+    
+    char hint_text[] = "ENTER: Details";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    
+    updateDisplay();
+}
+
+/**
+ * @brief Hiển thị menu ERROR - Trạng thái lỗi
+ */
+void display_main_error(void) {
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "ERROR STATE";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    
+    // Hiển thị lỗi chính
+    char error_text[] = "Critical Error!";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(error_text)/2)*6), 20, error_text);
+    
+    char select_text[20];
+    const vcu_state_outputs_t *outputs = VCU_StateOutputs();
+    sprintf(select_text, "Motor: %s", outputs->disable_motor ? "DISABLE" : "ENABLE");
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(select_text)/2)*6), 35, select_text);
+    
+    char hint_text[] = "ENTER: Details";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    
+    updateDisplay();
+}
+
+/**
+ * @brief Hiển thị trạng thái mạng
+ */
+void display_network(void)
+{
+
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "NETWORK";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+
+    char simStatus_text[20];
+    switch(simStatus)
+    {
+        case Sim_StartUp_Status:
+        {
+            strcpy(simStatus_text, "Starting...");
+        }
+        break;
+        case Sim_NoSim_Status:
+        {
+            strcpy(simStatus_text, "No SIM...");
+        }
+        break;
+        case Sim_CheckSignal_Status:
+        {
+            strcpy(simStatus_text, "Checking signal...");
+        }
+        break;
+        case Sim_CheckNetwork_Status:
+        {
+            strcpy(simStatus_text, "Checking network...");
+        }
+        break;
+        case Sim_Connecting_Status:
+        {
+            strcpy(simStatus_text, "Connecting...");
+
+        }
+        break;
+        case Sim_Connected_Status:
+        {
+            strcpy(simStatus_text, "Connected: 4G");
+
+        }
+        break;
+        case Sim_Disconnected_Status:
+        {
+            strcpy(simStatus_text, "Disconnecting...");
+        }
+        break;
+        case Sim_Sleep_Status:
+        {
+            strcpy(simStatus_text, "Sleeping");
+        }
+        break;
+        default:
+        {
+            strcpy(simStatus_text, "Unknown");
+        }
+        break;
+    }
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(simStatus_text)/2)*6), 20, simStatus_text);
+
+    char signal_text[20];
+    sprintf(signal_text, "Signal: %d%%", Sim_SignalQuanlityPercent());
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(signal_text)/2)*6), 35, signal_text);
+
+    char id_text[20];
+    sprintf(id_text, "ID Topic: %d", ID_DEVICE);
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(id_text)/2)*6), 50, id_text);
+
+    updateDisplay();
+}
+
 void process_button(void) {
     // Xử lý button actions từ interrupt
     static uint8_t last_button_enter = 0;
@@ -749,80 +1133,86 @@ void process_button(void) {
 
     // UP button
     if (button_up_pressed && !last_button_up) {
-        if (current_menu == MENU_THROTTLE_CONTROL) {
-            if (throttle_mode == THROTTLE_EDIT_SELECT) {
-                // Chế độ chọn thông số - chọn thông số trước đó
-                if (throttle_selected_param > 0) {
-                    throttle_selected_param--;
-                } else {
-                    throttle_selected_param = THROTTLE_PARAM_SPEED; // Quay vòng
-                }
-                debug_print("Parameter selection changed\r\n");
-            } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
-                // Chế độ chỉnh sửa giá trị
-                if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
-                    // Tăng speed
-                    if (throttle_value < 2000) {
-                        throttle_value++;
-                        throttle_vehicle_mode_temp.speed_low = throttle_value & 0xFF;
-                        throttle_vehicle_mode_temp.speed_high = throttle_value >> 8;
-                    }
-                } else if (throttle_selected_param == THROTTLE_PARAM_DIRECTION) {
-                    // Chuyển direction: Forward -> Reserve -> Forward
-                    if (throttle_vehicle_mode_temp.vehicle_mode.forward && !throttle_vehicle_mode_temp.vehicle_mode.reverse) {
-                        throttle_vehicle_mode_temp.vehicle_mode.forward = 0;
-                        throttle_vehicle_mode_temp.vehicle_mode.reverse = 1;
-                    } else if (throttle_vehicle_mode_temp.vehicle_mode.reverse && !throttle_vehicle_mode_temp.vehicle_mode.forward) {
-                        throttle_vehicle_mode_temp.vehicle_mode.reverse = 0;
-                        throttle_vehicle_mode_temp.vehicle_mode.forward = 0;
+        if (menu_display_mode == MENU_MODE_OVERVIEW) {
+            // Ở overview mode, không làm gì
+        } else if (menu_display_mode == MENU_MODE_DETAIL) {
+            // Ở detail mode, xử lý menu chi tiết
+            if (current_detail_menu == MENU_DETAIL_THROTTLE_CONTROL) {
+                if (throttle_mode == THROTTLE_EDIT_SELECT) {
+                    // Chế độ chọn thông số - chọn thông số trước đó
+                    if (throttle_selected_param > 0) {
+                        throttle_selected_param--;
                     } else {
-                        // Reset direction to Forward
-                        throttle_vehicle_mode_temp.vehicle_mode.forward = 1;
-                        throttle_vehicle_mode_temp.vehicle_mode.reverse = 0;
+                        throttle_selected_param = THROTTLE_PARAM_SPEED; // Quay vòng
                     }
-                } else if (throttle_selected_param == THROTTLE_PARAM_BRAKE) {
-                    // Toggle brake
-                    throttle_vehicle_mode_temp.vehicle_mode.brake = !throttle_vehicle_mode_temp.vehicle_mode.brake;
-                } else if (throttle_selected_param == THROTTLE_PARAM_ENABLE) {
-                    // Toggle enable
-                    throttle_vehicle_mode_temp.vehicle_mode.enable = !throttle_vehicle_mode_temp.vehicle_mode.enable;
-                }
-            } else {
-                // Chế độ navigation - chuyển menu forward
-                current_menu = (current_menu + 1) % 14;
-                debug_print("Menu switched forward\r\n");
-            }
-        } else if (current_menu == MENU_IO_INFO) {
-            if (io_mode == IO_EDIT_SELECT) {
-                // Chế độ chọn relay - chọn relay trước đó
-                if (io_selected_param > 0) {
-                    io_selected_param--;
+                    debug_print("Parameter selection changed\r\n");
+                } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
+                    // Chế độ chỉnh sửa giá trị
+                    if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
+                        // Tăng speed
+                        if (throttle_value < 2000) {
+                            throttle_value++;
+                            throttle_vehicle_mode_temp.speed_low = throttle_value & 0xFF;
+                            throttle_vehicle_mode_temp.speed_high = throttle_value >> 8;
+                        }
+                    } else if (throttle_selected_param == THROTTLE_PARAM_DIRECTION) {
+                        // Chuyển direction: Forward -> Reverse -> Forward
+                        if (throttle_vehicle_mode_temp.vehicle_mode.forward && !throttle_vehicle_mode_temp.vehicle_mode.reverse) {
+                            throttle_vehicle_mode_temp.vehicle_mode.forward = 0;
+                            throttle_vehicle_mode_temp.vehicle_mode.reverse = 1;
+                        } else if (throttle_vehicle_mode_temp.vehicle_mode.reverse && !throttle_vehicle_mode_temp.vehicle_mode.forward) {
+                            throttle_vehicle_mode_temp.vehicle_mode.reverse = 0;
+                            throttle_vehicle_mode_temp.vehicle_mode.forward = 0;
+                        } else {
+                            // Reset direction to Forward
+                            throttle_vehicle_mode_temp.vehicle_mode.forward = 1;
+                            throttle_vehicle_mode_temp.vehicle_mode.reverse = 0;
+                        }
+                    } else if (throttle_selected_param == THROTTLE_PARAM_BRAKE) {
+                        // Toggle brake
+                        throttle_vehicle_mode_temp.vehicle_mode.brake = !throttle_vehicle_mode_temp.vehicle_mode.brake;
+                    } else if (throttle_selected_param == THROTTLE_PARAM_ENABLE) {
+                        // Toggle enable
+                        throttle_vehicle_mode_temp.vehicle_mode.enable = !throttle_vehicle_mode_temp.vehicle_mode.enable;
+                    }
                 } else {
-                    io_selected_param = IO_PARAM_LIGHT; // Quay vòng
+                    // Chế độ navigation - chuyển menu forward (chỉ menu hợp lệ)
+                    current_detail_menu = find_next_allowed_detail_menu(current_detail_menu);
+                    debug_print("Detail menu switched forward\r\n");
                 }
-                debug_print("IO parameter selection changed\r\n");
-            } else if (io_mode == IO_EDIT_VALUE) {
-                // Chế độ chỉnh sửa trạng thái - toggle relay
-                if (io_selected_param == IO_PARAM_AC) {
-                    io_states_temp.ac_state = !io_states_temp.ac_state;
-                } else if (io_selected_param == IO_PARAM_FAN) {
-                    io_states_temp.fan_state = !io_states_temp.fan_state;
-                } else if (io_selected_param == IO_PARAM_LIGHT) {
-                    io_states_temp.light_state = !io_states_temp.light_state;
+            } else if (current_detail_menu == MENU_DETAIL_IO_INFO) {
+                if (io_mode == IO_EDIT_SELECT) {
+                    // Chế độ chọn relay - chọn relay trước đó
+                    if (io_selected_param > 0) {
+                        io_selected_param--;
+                    } else {
+                        io_selected_param = IO_PARAM_LIGHT; // Quay vòng
+                    }
+                    debug_print("IO parameter selection changed\r\n");
+                } else if (io_mode == IO_EDIT_VALUE) {
+                    // Chế độ chỉnh sửa trạng thái - toggle relay
+                    if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
+                        io_states_temp.disable_motor = !io_states_temp.disable_motor;
+                    } else if (io_selected_param == IO_PARAM_CONTACTOR) {
+                        io_states_temp.contactor_state = !io_states_temp.contactor_state;
+                    } else if (io_selected_param == IO_PARAM_LIGHT) {
+                        io_states_temp.light_state = !io_states_temp.light_state;
+                    }
+                } else {
+                    // Chế độ navigation - chuyển menu forward (chỉ menu hợp lệ)
+                    current_detail_menu = find_next_allowed_detail_menu(current_detail_menu);
+                    debug_print("Detail menu switched forward\r\n");
                 }
             } else {
-                // Chế độ navigation - chuyển menu forward
-                current_menu = (current_menu + 1) % 14;
-                debug_print("Menu switched forward\r\n");
+                // Không phải menu throttle hoặc IO - chuyển menu forward (chỉ menu hợp lệ)
+                current_detail_menu = find_next_allowed_detail_menu(current_detail_menu);
+                debug_print("Detail menu switched forward\r\n");
             }
-        } else {
-            // Không phải menu throttle hoặc IO - chuyển menu forward
-            current_menu = (current_menu + 1) % 14;
-            debug_print("Menu switched forward\r\n");
         }
     } else if (button_up_pressed && HAL_GetTick() - button_up_time > BUTTON_LONG_PRESS_TIME_MS) {
         // Long press - tăng nhanh cho speed
-        if (current_menu == MENU_THROTTLE_CONTROL && 
+        if (menu_display_mode == MENU_MODE_DETAIL &&
+            current_detail_menu == MENU_DETAIL_THROTTLE_CONTROL && 
             throttle_mode == THROTTLE_EDIT_VALUE && 
             throttle_selected_param == THROTTLE_PARAM_SPEED && 
             throttle_value < 2000) {
@@ -837,7 +1227,11 @@ void process_button(void) {
 
     // DOWN button
     if (button_down_pressed && !last_button_down) {
-        if (current_menu == MENU_THROTTLE_CONTROL) {
+        if (menu_display_mode == MENU_MODE_OVERVIEW) {
+            // Ở overview mode, không làm gì
+        } else if (menu_display_mode == MENU_MODE_DETAIL) {
+            // Ở detail mode, xử lý menu chi tiết
+            if (current_detail_menu == MENU_DETAIL_THROTTLE_CONTROL) {
             if (throttle_mode == THROTTLE_EDIT_SELECT) {
                 // Chế độ chọn thông số - chọn thông số tiếp theo
                 if (throttle_selected_param < THROTTLE_PARAM_SPEED) {
@@ -856,7 +1250,7 @@ void process_button(void) {
                         throttle_vehicle_mode_temp.speed_high = throttle_value >> 8;
                     }
                 } else if (throttle_selected_param == THROTTLE_PARAM_DIRECTION) {
-                    // Chuyển direction: Forward -> Neutral -> Reserve -> Forward
+                    // Chuyển direction: Forward -> Neutral -> Reverse -> Forward
                     if (throttle_vehicle_mode_temp.vehicle_mode.forward && !throttle_vehicle_mode_temp.vehicle_mode.reverse) {
                         throttle_vehicle_mode_temp.vehicle_mode.forward = 0;
                         throttle_vehicle_mode_temp.vehicle_mode.reverse = 1;
@@ -876,41 +1270,43 @@ void process_button(void) {
                     throttle_vehicle_mode_temp.vehicle_mode.enable = !throttle_vehicle_mode_temp.vehicle_mode.enable;
                 }
             } else {
-                // Chế độ navigation - chuyển menu backward
-                current_menu = (current_menu - 1 + 14) % 14;
-                debug_print("Menu switched backward\r\n");
+                // Chế độ navigation - chuyển menu backward (chỉ menu hợp lệ)
+                current_detail_menu = find_prev_allowed_detail_menu(current_detail_menu);
+                debug_print("Detail menu switched backward\r\n");
             }
-        } else if (current_menu == MENU_IO_INFO) {
+        } else if (current_detail_menu == MENU_DETAIL_IO_INFO) {
             if (io_mode == IO_EDIT_SELECT) {
                 // Chế độ chọn relay - chọn relay tiếp theo
                 if (io_selected_param < IO_PARAM_LIGHT) {
                     io_selected_param++;
                 } else {
-                    io_selected_param = IO_PARAM_AC; // Quay vòng
+                    io_selected_param = IO_PARAM_MOTOR_STATUS; // Quay vòng
                 }
                 debug_print("IO parameter selection changed\r\n");
             } else if (io_mode == IO_EDIT_VALUE) {
                 // Chế độ chỉnh sửa trạng thái - toggle relay
-                if (io_selected_param == IO_PARAM_AC) {
-                    io_states_temp.ac_state = !io_states_temp.ac_state;
-                } else if (io_selected_param == IO_PARAM_FAN) {
-                    io_states_temp.fan_state = !io_states_temp.fan_state;
+                if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
+                    io_states_temp.disable_motor = !io_states_temp.disable_motor;
+                } else if (io_selected_param == IO_PARAM_CONTACTOR) {
+                    io_states_temp.contactor_state = !io_states_temp.contactor_state;
                 } else if (io_selected_param == IO_PARAM_LIGHT) {
                     io_states_temp.light_state = !io_states_temp.light_state;
                 }
             } else {
-                // Chế độ navigation - chuyển menu backward
-                current_menu = (current_menu - 1 + 14) % 14;
-                debug_print("Menu switched backward\r\n");
+                // Chế độ navigation - chuyển menu backward (chỉ menu hợp lệ)
+                current_detail_menu = find_prev_allowed_detail_menu(current_detail_menu);
+                debug_print("Detail menu switched backward\r\n");
             }
         } else {
-            // Không phải menu throttle hoặc IO - chuyển menu backward
-            current_menu = (current_menu - 1 + 14) % 14;
-            debug_print("Menu switched backward\r\n");
+            // Không phải menu throttle hoặc IO - chuyển menu backward (chỉ menu hợp lệ)
+            current_detail_menu = find_prev_allowed_detail_menu(current_detail_menu);
+            debug_print("Detail menu switched backward\r\n");
+        }
         }
     } else if (button_down_pressed && HAL_GetTick() - button_down_time > BUTTON_LONG_PRESS_TIME_MS) {
         // Long press - giảm nhanh cho speed
-        if (current_menu == MENU_THROTTLE_CONTROL && 
+        if (menu_display_mode == MENU_MODE_DETAIL &&
+            current_detail_menu == MENU_DETAIL_THROTTLE_CONTROL && 
             throttle_mode == THROTTLE_EDIT_VALUE && 
             throttle_selected_param == THROTTLE_PARAM_SPEED && 
             throttle_value > 0) {
@@ -925,87 +1321,106 @@ void process_button(void) {
 
     // ENTER button
     static uint8_t enter_long_press_handled = 0;
+    static uint8_t last_enter_long_press_handled = 0;
 
     if (button_enter_pressed && !last_button_enter) {
+        enter_long_press_handled = 0;
+        if (menu_display_mode == MENU_MODE_OVERVIEW) {
+            // Ở overview mode, nhấn ENTER chuyển sang detail mode
+            menu_display_mode = MENU_MODE_DETAIL;
+            // Tìm menu chi tiết hợp lệ đầu tiên
+            current_detail_menu = find_next_allowed_detail_menu(MENU_DETAIL_BMS_INFO);
+            debug_print("Switched to detail mode\r\n");
+        }
+    } else if (!button_enter_pressed && last_button_enter && !last_enter_long_press_handled) {
         enter_long_press_handled = 0; // Reset flag khi bắt đầu nhấn
-        if (current_menu == MENU_THROTTLE_CONTROL) {
-            if (throttle_mode == THROTTLE_NAVIGATION) {
-                // Lần đầu ấn ENTER - vào chế độ chọn thông số
-                throttle_mode = THROTTLE_EDIT_SELECT;
-                throttle_selected_param = THROTTLE_PARAM_BRAKE; // Reset về thông số đầu tiên
-                debug_print("Entered throttle select mode\r\n");
-            } else if (throttle_mode == THROTTLE_EDIT_SELECT) {
-                // Ấn ENTER lần 2 - vào chế độ chỉnh sửa giá trị
-                throttle_mode = THROTTLE_EDIT_VALUE;
-                // Khởi tạo biến trung gian từ giá trị gốc
-                throttle_vehicle_mode_temp = can_slider_vcu;
-                // Nếu chọn speed, khởi tạo throttle_value từ speed_high và speed_low
-                if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
-                    throttle_value = (can_slider_vcu.speed_high << 8) | can_slider_vcu.speed_low;
-                }
-                debug_print("Entered throttle edit value mode\r\n");
-            } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
-                // Ấn ENTER lần 3 - lưu giá trị và quay về chế độ chọn
-                if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
-                    can_slider_vcu.speed_high = throttle_value >> 8;
-                    can_slider_vcu.speed_low = throttle_value & 0xFF;
-                    debug_print("Speed saved\r\n");
-                } else {
-                    // Lưu vehicle_mode từ biến trung gian vào can_slider_vcu
+        if (menu_display_mode == MENU_MODE_DETAIL) {
+            // Ở detail mode, xử lý menu chi tiết
+            if (current_detail_menu == MENU_DETAIL_THROTTLE_CONTROL) {
+                if (throttle_mode == THROTTLE_NAVIGATION) {
+                    // Lần đầu ấn ENTER - vào chế độ chọn thông số
+                    throttle_mode = THROTTLE_EDIT_SELECT;
+                    throttle_selected_param = THROTTLE_PARAM_BRAKE; // Reset về thông số đầu tiên
+                    debug_print("Entered throttle select mode\r\n");
+                } else if (throttle_mode == THROTTLE_EDIT_SELECT) {
+                    // Ấn ENTER lần 2 - vào chế độ chỉnh sửa giá trị
+                    throttle_mode = THROTTLE_EDIT_VALUE;
+                    // Khởi tạo biến trung gian từ giá trị gốc
+                    throttle_vehicle_mode_temp = can_slider_vcu;
+                    // Nếu chọn speed, khởi tạo throttle_value từ speed_high và speed_low
+                    if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
+                        throttle_value = (can_slider_vcu.speed_high << 8) | can_slider_vcu.speed_low;
+                    }
+                    debug_print("Entered throttle edit value mode\r\n");
+                } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
                     can_slider_vcu = throttle_vehicle_mode_temp;
-                    debug_print("Parameter saved\r\n");
+                    throttle_mode = THROTTLE_EDIT_SELECT; // Quay về chế độ chọn
                 }
-                throttle_mode = THROTTLE_EDIT_SELECT; // Quay về chế độ chọn
-            }
-        } else if (current_menu == MENU_IO_INFO) {
-            if (io_mode == IO_NAVIGATION) {
-                // Lần đầu ấn ENTER - vào chế độ chọn relay
-                io_mode = IO_EDIT_SELECT;
-                io_selected_param = IO_PARAM_AC; // Reset về relay đầu tiên
-                debug_print("Entered IO select mode\r\n");
-            } else if (io_mode == IO_EDIT_SELECT) {
-                // Ấn ENTER lần 2 - vào chế độ chỉnh sửa trạng thái
-                io_mode = IO_EDIT_VALUE;
-                // Khởi tạo biến trung gian từ giá trị GPIO hiện tại
-                io_states_temp.ac_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
-                io_states_temp.fan_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
-                io_states_temp.light_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
-                debug_print("Entered IO edit value mode\r\n");
-            } else if (io_mode == IO_EDIT_VALUE) {
-                // Ấn ENTER lần 3 - lưu giá trị và áp dụng vào GPIO
-                if (io_selected_param == IO_PARAM_AC) {
-                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, io_states_temp.ac_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-                    debug_print("AC state saved\r\n");
-                } else if (io_selected_param == IO_PARAM_FAN) {
-                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, io_states_temp.fan_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-                    debug_print("Fan state saved\r\n");
-                } else if (io_selected_param == IO_PARAM_LIGHT) {
-                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, io_states_temp.light_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-                    debug_print("Light state saved\r\n");
+            } else if (current_detail_menu == MENU_DETAIL_IO_INFO) {
+                if (io_mode == IO_NAVIGATION) {
+                    // Lần đầu ấn ENTER - vào chế độ chọn relay
+                    io_mode = IO_EDIT_SELECT;
+                    io_selected_param = IO_PARAM_MOTOR_STATUS; // Reset về relay đầu tiên
+                    debug_print("Entered IO select mode\r\n");
+                } else if (io_mode == IO_EDIT_SELECT) {
+                    // Ấn ENTER lần 2 - vào chế độ chỉnh sửa trạng thái
+                    io_mode = IO_EDIT_VALUE;
+                    // Khởi tạo biến trung gian từ giá trị GPIO hiện tại
+                    io_states_temp.disable_motor = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
+                    io_states_temp.contactor_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
+                    io_states_temp.light_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
+                    debug_print("Entered IO edit value mode\r\n");
+                } else if (io_mode == IO_EDIT_VALUE) {
+                    // Ấn ENTER lần 3 - lưu giá trị và áp dụng vào GPIO
+                    if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
+                        vcu_ctx.inputs.disable_motor_request = io_states_temp.disable_motor;
+                        debug_print("Motor state saved\r\n");
+                    } else if (io_selected_param == IO_PARAM_CONTACTOR) {
+                        vcu_ctx.inputs.contactor_request = io_states_temp.contactor_state;
+                        debug_print("Contactor state saved\r\n");
+                    } else if (io_selected_param == IO_PARAM_LIGHT) {
+                        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, io_states_temp.light_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                        debug_print("Light state saved\r\n");
+                    }
+                    io_mode = IO_EDIT_SELECT; // Quay về chế độ chọn
                 }
-                io_mode = IO_EDIT_SELECT; // Quay về chế độ chọn
             }
         }
     } else if (button_enter_pressed && 
                 HAL_GetTick() - button_enter_time > ENTER_LONG_PRESS_TIME_MS && 
                 !enter_long_press_handled) {
-        // Long press ENTER - thoát khỏi chế độ edit (chỉ trigger một lần)
-        if (current_menu == MENU_THROTTLE_CONTROL) {
-            if (throttle_mode == THROTTLE_EDIT_SELECT || throttle_mode == THROTTLE_EDIT_VALUE) {
-                // Thoát về chế độ điều hướng
-                throttle_mode = THROTTLE_NAVIGATION;
-                debug_print("Exited throttle edit mode\r\n");
-                enter_long_press_handled = 1; // Đánh dấu đã xử lý
-            }
-        } else if (current_menu == MENU_IO_INFO) {
-            if (io_mode == IO_EDIT_SELECT || io_mode == IO_EDIT_VALUE) {
-                // Thoát về chế độ điều hướng
-                io_mode = IO_NAVIGATION;
-                debug_print("Exited IO edit mode\r\n");
-                enter_long_press_handled = 1; // Đánh dấu đã xử lý
+        // Long press ENTER - quay về overview mode hoặc thoát khỏi chế độ edit
+        if (menu_display_mode == MENU_MODE_DETAIL) {
+            enter_long_press_handled = 1;
+            if (current_detail_menu == MENU_DETAIL_THROTTLE_CONTROL) {
+                if (throttle_mode == THROTTLE_EDIT_SELECT || throttle_mode == THROTTLE_EDIT_VALUE) {
+                    // Thoát về chế độ điều hướng
+                    throttle_mode = THROTTLE_NAVIGATION;
+                    debug_print("Exited throttle edit mode\r\n");
+                } else {
+                    // Quay về overview mode
+                    menu_display_mode = MENU_MODE_OVERVIEW;
+                    debug_print("Returned to overview mode\r\n");
+                }
+            } else if (current_detail_menu == MENU_DETAIL_IO_INFO) {
+                if (io_mode == IO_EDIT_SELECT || io_mode == IO_EDIT_VALUE) {
+                    // Thoát về chế độ điều hướng
+                    io_mode = IO_NAVIGATION;
+                    debug_print("Exited IO edit mode\r\n");
+                } else {
+                    // Quay về overview mode
+                    menu_display_mode = MENU_MODE_OVERVIEW;
+                    debug_print("Returned to overview mode\r\n");
+                }
+            } else {
+                // Quay về overview mode
+                menu_display_mode = MENU_MODE_OVERVIEW;
+                debug_print("Returned to overview mode\r\n");
             }
         }
     }
+
+    last_enter_long_press_handled = enter_long_press_handled;
 
     if (!button_enter_pressed) {
         enter_long_press_handled = 0; // Reset flag khi thả nút
@@ -1015,53 +1430,97 @@ void process_button(void) {
 }
   
 void process_menu(void) {
-// Hiển thị menu tương ứng
-switch (current_menu)
-{
-case MENU_CAN_INFO_1:
-    display_can_info_1();
-    break;
-case MENU_CAN_INFO_2:
-    display_can_info_2();
-    break;
-case MENU_THROTTLE_CONTROL:
-    display_throttle_control();
-    break;
-case MENU_BMS_INFO:
-    display_bms_info();
-    break;
-case MENU_ALM_BMS:
-    display_alm_bms();
-    break;
-case MENU_IO_INFO:
-    display_io_info();
-    break;
-case MENU_BMS_BATT_ST2:
-    display_bms_batt_st2();
-    break;
-case MENU_BMS_ALL_TEMP:
-    display_bms_all_temp();
-    break;
-case MENU_BMS_ERR_INFO:
-    display_bms_err_info();
-    break;
-case MENU_BMS_INFO_SYS:
-    display_bms_info_sys();
-    break;
-case MENU_BMS_SW_STA:
-    display_bms_sw_sta();
-    break;
-case MENU_BMS_CELLVOL:
-    display_bms_cellvol();
-    break;
-case MENU_BMS_CELLVOL_2:
-    display_bms_cellvol_2();
-    break;
-case MENU_BMS_CHG_INFO:
-    display_bms_chg_info();
-    break;
-default:
-    display_can_info_1();
-    break;
-}
+	vcu_state_t current_vcu_state = VCU_StateGet();
+	
+	// Tự động chuyển menu chính theo VCU state
+	if (current_vcu_state != last_vcu_state) {
+		current_main_menu = vcu_state_to_main_menu(current_vcu_state);
+		last_vcu_state = current_vcu_state;
+		menu_display_mode = MENU_MODE_OVERVIEW; // Reset về overview khi chuyển state
+	}
+	
+	// Nếu ở chế độ overview, hiển thị menu chính
+	if (menu_display_mode == MENU_MODE_OVERVIEW) {
+        throttle_mode = THROTTLE_NAVIGATION;
+        io_mode = IO_NAVIGATION;
+		switch (current_main_menu) {
+		case MENU_MAIN_INIT:
+			display_main_init();
+			break;
+		case MENU_MAIN_CAN:
+			display_main_can();
+			break;
+		case MENU_MAIN_PHYSICAL:
+			display_main_physical();
+			break;
+		case MENU_MAIN_CHARGE:
+			display_main_charge();
+			break;
+		case MENU_MAIN_ERROR:
+			display_main_error();
+			break;
+		default:
+			display_main_init();
+			break;
+		}
+	} else {
+		// Chế độ detail: hiển thị menu chi tiết
+		// Kiểm tra menu chi tiết có được phép không
+		if (!is_detail_menu_allowed(current_detail_menu)) {
+			// Nếu menu không được phép, chuyển sang menu hợp lệ đầu tiên
+			current_detail_menu = find_next_allowed_detail_menu(MENU_DETAIL_BMS_INFO);
+		}
+		
+		// Hiển thị menu chi tiết tương ứng
+		switch (current_detail_menu) {
+		case MENU_DETAIL_CAN_INFO_1:
+			display_can_info_1();
+			break;
+		case MENU_DETAIL_CAN_INFO_2:
+			display_can_info_2();
+			break;
+		case MENU_DETAIL_THROTTLE_CONTROL:
+			display_throttle_control();
+			break;
+		case MENU_DETAIL_BMS_INFO:
+			display_bms_info();
+			break;
+		case MENU_DETAIL_ALM_BMS:
+			display_alm_bms();
+			break;
+		case MENU_DETAIL_IO_INFO:
+			display_io_info();
+			break;
+		case MENU_DETAIL_BMS_BATT_ST2:
+			display_bms_batt_st2();
+			break;
+		case MENU_DETAIL_BMS_ALL_TEMP:
+			display_bms_all_temp();
+			break;
+		case MENU_DETAIL_BMS_ERR_INFO:
+			display_bms_err_info();
+			break;
+		case MENU_DETAIL_BMS_INFO_SYS:
+			display_bms_info_sys();
+			break;
+		case MENU_DETAIL_BMS_SW_STA:
+			display_bms_sw_sta();
+			break;
+		case MENU_DETAIL_BMS_CELLVOL:
+			display_bms_cellvol();
+			break;
+		case MENU_DETAIL_BMS_CELLVOL_2:
+			display_bms_cellvol_2();
+			break;
+		case MENU_DETAIL_BMS_CHG_INFO:
+			display_bms_chg_info();
+			break;
+        case MENU_DETAIL_NETWORK:
+            display_network();
+            break;
+		default:
+			display_bms_info();
+			break;
+		}
+	}
 }

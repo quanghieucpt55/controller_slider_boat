@@ -1,0 +1,9 @@
+../Library_User/Storage/24Cxx.c:31:6:EEPRom24C_Init	1
+../Library_User/Storage/24Cxx.c:36:9:EEPROM24C_Polling	2
+../Library_User/Storage/24Cxx.c:46:9:EEPRom24C_ReadByte	6
+../Library_User/Storage/24Cxx.c:99:10:EEPRom24C_ReadBuffer	8
+../Library_User/Storage/24Cxx.c:163:10:EEPRom24C_ReadBytes	2
+../Library_User/Storage/24Cxx.c:183:6:EEPRom24C_WriteByte	5
+../Library_User/Storage/24Cxx.c:215:10:EEPRom24C_WriteBuffer	6
+../Library_User/Storage/24Cxx.c:251:10:EEPRom24C_WriteBytes	6
+../Library_User/Storage/24Cxx.c:294:6:EEPRom24_Earse	4

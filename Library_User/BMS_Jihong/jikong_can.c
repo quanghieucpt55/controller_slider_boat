@@ -138,8 +138,8 @@ void BMS_Jikong_Process(BMS_Jikong_t *bms, CAN_RxHeaderTypeDef *hdr, uint8_t *d)
 		case ID_ALL_TEMP:
 			bms->allTemp.mask = d[0]; // Bitmask: 1 = có cảm biến
 			for (int i = 0; i < 5; i++)
-				bms->allTemp.temp[i] = (d[i + 1] == 0xFF)
-										? -127                // -127 = cảm biến không tồn tại
+				bms->allTemp.temp[i] = (d[i + 1] == 0xFF || d[i+1] == 0x00)
+										? 0xFF                // -127 = cảm biến không tồn tại
 										: ((int8_t)d[i + 1] - 50);
 			break;
 
@@ -155,6 +155,7 @@ void BMS_Jikong_Process(BMS_Jikong_t *bms, CAN_RxHeaderTypeDef *hdr, uint8_t *d)
 		case ID_BMSERR_INFO: {
 			uint32_t raw = GET_U32_LE(&d[0]);   // ghép 4 byte (little-endian)
 
+			bms->bmsErrInfo.raw = raw;
 			bms->bmsErrInfo.line_res_high     = (raw >> 0)  & 0x01;
 			bms->bmsErrInfo.mos_overtemp      = (raw >> 1)  & 0x01;
 			bms->bmsErrInfo.cell_count_mismatch = (raw >> 2)  & 0x01;
@@ -225,7 +226,15 @@ void BMS_Jikong_Process(BMS_Jikong_t *bms, CAN_RxHeaderTypeDef *hdr, uint8_t *d)
 				if (cell_idx < 25)
 					bms->cellArray.cell_mV[cell_idx] = GET_U16_LE(&d[i * 2]); // Điện áp mV
 			}
-			bms->cellArray.cell_count = 16; 
+			uint8_t cell_count = 0;
+			for (int i = 0; i < 25; i++)
+			{
+				if (bms->cellArray.cell_mV[i] != 0)
+				{
+					cell_count++;
+				}
+			}
+			bms->cellArray.cell_count = cell_count; 
 			break;
 		}
 

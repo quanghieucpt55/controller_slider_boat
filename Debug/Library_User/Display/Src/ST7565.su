@@ -10,9 +10,9 @@
 ../Library_User/Display/Src/ST7565.c:218:6:ST7565_drawcircle	32	static
 ../Library_User/Display/Src/ST7565.c:256:6:ST7565_fillcircle	32	static
 ../Library_User/Display/Src/ST7565.c:294:6:updateDisplay	16	static
-../Library_User/Display/Src/ST7565.c:314:6:ST7565_setpixel	24	static
-../Library_User/Display/Src/ST7565.c:328:6:ST7565_init	8	static
-../Library_User/Display/Src/ST7565.c:384:9:ST7565_command	32	static
-../Library_User/Display/Src/ST7565.c:396:9:ST7565_data	32	static
-../Library_User/Display/Src/ST7565.c:407:6:ST7565_set_brightness	16	static
-../Library_User/Display/Src/ST7565.c:413:6:ST7565_clear	16	static
+../Library_User/Display/Src/ST7565.c:312:6:ST7565_setpixel	24	static
+../Library_User/Display/Src/ST7565.c:326:6:ST7565_init	8	static
+../Library_User/Display/Src/ST7565.c:383:9:ST7565_command	32	static
+../Library_User/Display/Src/ST7565.c:395:9:ST7565_data	32	static
+../Library_User/Display/Src/ST7565.c:406:6:ST7565_set_brightness	16	static
+../Library_User/Display/Src/ST7565.c:412:6:ST7565_clear	16	static
