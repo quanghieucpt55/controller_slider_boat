@@ -31,6 +31,12 @@ enum e_sim_work
     COUNT_SIM_SLEEP=10
 };
 
+typedef enum 
+{
+    SIM_MESSAGE_TYPE_PING=0,
+    SIM_MESSAGE_TYPE_EVENT=1,
+} e_sim_messageType_t;
+
 void Sim_Work(void);
 void Sim_Init(void);
 uint8_t Sim_SignalQuanlityPercent(void);

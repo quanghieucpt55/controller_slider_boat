@@ -27,11 +27,11 @@ Core/Src \
 Core/Startup \
 Drivers/STM32F4xx_HAL_Driver/Src \
 Library_User/BMS_Jihong \
-Library_User/Charger \
+Library_User/Boat/Frame \
+Library_User/Boat/Log \
 Library_User/Controller_Slider/Src \
 Library_User/Display/Src \
 Library_User/Led_Error \
-Library_User/Network/Frame \
 Library_User/Network/Mqtt \
 Library_User/Network/Sim \
 Library_User/Network \

@@ -58,7 +58,7 @@ void Realtime_UpdateNum(uint8_t year,uint8_t month,uint8_t day,
 void Realtime_UpdateWithDayOfWeek(uint8_t year,uint8_t month,uint8_t day,
                             uint8_t hour,uint8_t minute,uint8_t sec,
                             uint8_t dayOfWeek);
-uint8_t ValidTime(int year, int month, int day, int hour, int minute, int sec);
+uint8_t ValidTime(realtime_t * time);
 uint32_t RealtimeConvertValueToInterger(realtime_t * timeUpdate);
 
 #endif

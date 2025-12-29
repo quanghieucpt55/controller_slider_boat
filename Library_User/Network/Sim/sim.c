@@ -14,7 +14,6 @@
 #include "sim_io.h"
 #include "remote_firmware.h"
 #include "VCU_State.h"
-#include "Boat_param.h"
 
 #define CMNET "\"APN\""
 
@@ -31,6 +30,7 @@
 
 e_sim_work simCount=COUNT_SIM_PWON;
 e_sim_status simStatus; // trạng thái sim
+e_sim_messageType_t msgType;
 
 uint8_t cmdStep=1,
         simStep=4,
@@ -373,10 +373,6 @@ void SimWait3_Reset(void)
 {
     lastTime3Sim=millis();
 }
-void SimCmdTimer_Reset(void)
-{
-    Boat_CmdTimer_Reset();
-}
 
 uint8_t SimWait2(int32_t delay)
 {
@@ -570,51 +566,39 @@ int Sim_StartUp(void)			// 2
 			GPRS_Ask("AT+CPIN?\r\n");							// Test connection
 			break;
 		case 3:
-			if (WaitAnswer("+CPIN: READY")||WaitAnswer("OK"))
-            {
-                simErrorRetry=0;						// Module buffer_recv_gprs
-                NextStep();
-            }
+			if (WaitAnswer("+CPIN: READY")||WaitAnswer("OK"))						// Module buffer_recv_gprs
+				NextStep();
 			else if (Wait(2))	//2								// Module don't buffer_recv_gprs or No SIM
             {
                 if(WaitAnswer("NO SIM"))
                 {
                     simStatus=Sim_NoSim_Status;
-                    return -1;
                 }
-                if (++simErrorRetry>=10)
-                {
-                    simErrorRetry=0;
-                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                } else return -1;
+                Sim1_CountToStepTo(COUNT_SIM_PWON,2);
             }
 			break;
 		case 4:												// Check NetworkMqtt SIM_PROVIDER
-			GPRS_Ask("AT+COPS?\r\n");					// Test connection
+			GPRS_Ask("AT+COPS?\r\n");							// Test connection
             simStatus=Sim_CheckSignal_Status;
 			break;
 		case 5:
 			if (WaitAnswer("+COPS: 0,"))
 			{
-                simErrorRetry=0;
-                if(Wait(2)) NextStep();
+                if(Wait(2))
+				    NextStep();
 			}
-			else if (Wait(2)) {
-                if (++simErrorRetry>=15)
-                {
-                    simErrorRetry=0;
-                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                } else Stepto(4);
-            }
+			else if (Wait(1))//2							// Module don't buffer_recv_gprs or No SIM
+			{											// WaitAnswer("+COPS: 0")
+				return -1;
+			}
 			break;
-        case 6:
+        case 0x06:
             GPRS_Ask("AT+CSQ\r\n");
             break;
-        case 7:
+        case 0x07:
             if(WaitAnswer("OK"))
             {
                 // lấy chất lượng đường truyền
-                simErrorRetry=0;
                 uint8_t pos=WaitAnswer("+CSQ: ");
                 if(pos>0)
                 {
@@ -625,34 +609,19 @@ int Sim_StartUp(void)			// 2
                 NextStep();
             }
 			else if(Wait(2))
-            {
-                if (++simErrorRetry>=10)
-                {
-                    simErrorRetry=0;
-                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                } else Stepto(6);
-            }
+				return -2;
             break;
-        case 8:
+        case 0x08:
 			GPRS_Ask("ATE0\r\n"); // tat echo
 			break;
-		case 9:
+		case 0x09:
 			if(WaitAnswer("OK"))
-            {
-                simErrorRetry=0;
 				NextStep();
-            }
-			else if(Wait(2)) 
-            {
-                if (++simErrorRetry>=10)
-                {
-                    simErrorRetry=0;
-                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                } else Stepto(8);
-            }
+			else if(Wait(2))
+				return -2;
 			break;
-        case 10: // end set up!
-            debug_print("Done");
+
+        case 14: // end set up!
             return 2;
         break;
 		default:
@@ -671,18 +640,10 @@ int Sim_SetUp(void)
             GPRS_Ask("AT+CGATT=1\r\n");
         break;
         case 1:
-            if(WaitAnswer("OK")) {
-                simErrorRetry=0;
-                NextStep();
-            }
+            if(WaitAnswer("OK"))
+				NextStep();
 			else if(Wait(2))
-            {
-                if (++simErrorRetry>=10)
-                {
-                    simErrorRetry=0;
-                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                } else return -1;
-            }
+				return -2;
 			break;
         break;
 		case 2:
@@ -705,18 +666,18 @@ int Sim_SetUp(void)
 					if (++simErrorRetry>=10)
 					{
 						simErrorRetry=0;
-						Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-					} else Stepto(2);
+						return -2;
+					}
+					else
+						return -1;
 				}
             break;
         case 4:
             GPRS_Ask("AT+QICSGP=1\r\n");    //
             break;
         case 5:
-            if (WaitAnswer("OK")) {
-                simErrorRetry=0;
-                NextStep();
-            }
+            if (WaitAnswer("OK"))
+				NextStep();
 			else if(WaitAnswer("ERROR"))
 			{
 				Sim1_CountToStepTo(COUNT_SIM_PWON,2);
@@ -724,23 +685,14 @@ int Sim_SetUp(void)
 			}
             else
 		        if (Wait(3))
-                {
-                    if (++simErrorRetry>=10)
-                    {
-                        simErrorRetry=0;
-                        Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                    } else Stepto(4);
-                }
+					return -1;
             break;
         case 6:
             GPRS_Ask("AT+QIACT=1\r\n");    // Activate scene 1, affected by the network status, the maximum response time is 150 seconds
             break;
         case 7:
             if (WaitAnswer("OK"))
-            {
-                simErrorRetry=0;
 				NextStep();
-            }
 			else if(WaitAnswer("ERROR"))
 			{
 				Sim1_CountToStepTo(COUNT_SIM_PWON,2);
@@ -748,13 +700,7 @@ int Sim_SetUp(void)
 			}
             else
 		        if (Wait(3))
-                {
-                    if (++simErrorRetry>=10)
-                    {
-                        simErrorRetry=0;
-                        Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                    } else Stepto(6);
-                }
+					return -1;
             break;
 //        case 8:
 //        {
@@ -971,7 +917,6 @@ int Sim_MqttEstablish(void)
 			{
 				// SimWait2_Reset();// xóa thời gian timer 2 đi
 				// SimWait3_Reset();// xóa thời gian timer 2 đi
-				SimCmdTimer_Reset();// Reset timer cho tất cả các CMD
 				Sim_ResetConversation();
 				Sim_RequireSendImmediate();// yêu cầu sim gửi ngay lập tức lần đầu kết nối
 				return 2;
@@ -1010,12 +955,9 @@ int Sim_MqttComunication(void)
     }
     simStatus=Sim_Connected_Status;
     Client_PublishBoat_ResponseRemote(&c_gprs);
-    //Client_Publish_Event(&c_gprs);
     Client_PublishFirm_ResponseRemote(&c_gprs);
-    // Gửi dữ liệu chính của Boat
-    Sim_MqttSendBoatCmdStep();
 
-    // gửi dữ liệu hearbeat
+    // gửi dữ liệu giám sát theo điều kiện chạy/dừng
     switch(simStep)
     {
         case 0:
@@ -1031,55 +973,52 @@ int Sim_MqttComunication(void)
             }
             if(Wait(simCycleSend)||simRequireSendImmediate)
             {
+                msgType=SIM_MESSAGE_TYPE_PING;
                 if(simRequireSendImmediate)
                 {
                     simRequireSendImmediate=0;
                     simCycleSend=2;
                 }
-                Client_Ping_Boat(&c_gprs);
-                //NextStep();
+                Client_Ping_Boat(&c_gprs);       
+                NextStep();
+            } else {
+                msgType=SIM_MESSAGE_TYPE_EVENT;
+                if (Client_PublishBoat_Event(&c_gprs))// gửi sự kiện
+                    NextStep();
             }
             break;
-        // case 2:
-        //     if(Sim_CheckMsgMqtt(LWMQTT_PUBACK_PACKET)==CYRET_SUCCESS)
-        //     {
-        //         return -1;
-        //     }
-        //     else if(Wait(3))// đợi 3s
-        //     {
-        //         // không có phản hồi từ phía server ,tiếp tục gửi thêm 1 lần nữa
-        //         Client_Ping_Boat(&c_gprs);
-        //         NextStep();
-        //     }
-        //     break;
-        // case 3:
-        //     if(Sim_CheckMsgMqtt(LWMQTT_PUBACK_PACKET)==CYRET_SUCCESS)
-        //     {
-        //         return -1;
-        //     }
-        //     else if(Wait(3))
-        //     {
-        //         Sim1_CountToStepTo(COUNT_SIM_DISCONNECT,0);
-        //         return 1;
-        //     }
-        //     break;
-        //     default:
-        //         NextStep();
+        case 2:
+            if(Sim_CheckMsgMqtt(LWMQTT_PUBACK_PACKET)==CYRET_SUCCESS)
+            {
+                return -1;
+            }
+            else if(Wait(3))// đợi 3s
+            {
+                // không có phản hồi từ phía server ,tiếp tục gửi thêm 1 lần nữa
+            	if (msgType == SIM_MESSAGE_TYPE_PING) {
+                    Client_Ping_Boat(&c_gprs);
+                    NextStep();
+                } else if (msgType == SIM_MESSAGE_TYPE_EVENT) {
+                    if (Client_PublishBoat_Event(&c_gprs))// gửi sự kiện
+                        NextStep();
+                }
+            }
+            break;
+        case 3:
+            if(Sim_CheckMsgMqtt(LWMQTT_PUBACK_PACKET)==CYRET_SUCCESS)
+            {
+                return -1;
+            }
+            else if(Wait(3))
+            {
+                Sim1_CountToStepTo(COUNT_SIM_DISCONNECT,0);
+                return 1;
+            }
+            break;
+            default:
+                NextStep();
     }
     return 0;
-}
-
-void Sim_MqttSendBoatCmdStep(void)
-{
-    // Duyệt qua TẤT CẢ các CMD, kiểm tra cờ và gửi những CMD có cờ được set
-    for (uint8_t idx = 0; idx < BOAT_CMD_COUNT; idx++) {
-        if (boat_cycle_param.cmdReadyFlag[idx]) {
-            // Tính CMD trực tiếp từ enum 
-            uint8_t cmd = (uint8_t)(CMD1_DRIVESTATUS + idx);
-            Client_PublishBoat_Mains(&c_gprs, cmd);
-            boat_cycle_param.cmdReadyFlag[idx] = 0;  // Clear cờ sau khi gửi
-        }
-    }
 }
 
 int Sim_Sleep(void)

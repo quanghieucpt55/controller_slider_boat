@@ -73,6 +73,10 @@ extern void debug_print(const char* message);
 #define SPI1_FLASH_MISO_GPIO_Port GPIOA
 #define SPI1_FLASH_MOSI_Pin GPIO_PIN_7
 #define SPI1_FLASH_MOSI_GPIO_Port GPIOA
+#define HMI_TX_Pin GPIO_PIN_10
+#define HMI_TX_GPIO_Port GPIOB
+#define HMI_RX_Pin GPIO_PIN_11
+#define HMI_RX_GPIO_Port GPIOB
 #define PWR_KEY_Pin GPIO_PIN_15
 #define PWR_KEY_GPIO_Port GPIOD
 #define UART6_SIM_TX_Pin GPIO_PIN_6
@@ -91,8 +95,8 @@ extern void debug_print(const char* message);
 #define SCK_RTC_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
-#define RELAY_SELECT_MODE_Pin GPIO_PIN_2
-#define RELAY_SELECT_MODE_GPIO_Port GPIOE
+#define RELAY_DISABLE_MOTOR_Pin GPIO_PIN_2
+#define RELAY_DISABLE_MOTOR_GPIO_Port GPIOE
 #define RELAY_CONTACTOR_Pin GPIO_PIN_3
 #define RELAY_CONTACTOR_GPIO_Port GPIOE
 /* USER CODE END Private defines */

@@ -6,3 +6,4 @@
 ../Library_User/Network/network.c:75:9:Network_GetCurrentInterface	4	static
 ../Library_User/Network/network.c:80:6:Network_RequireSendImmediate	4	static
 ../Library_User/Network/network.c:85:9:IsNetwork_Ready	4	static
+../Library_User/Network/network.c:94:10:Network_WriteConfig	16	static

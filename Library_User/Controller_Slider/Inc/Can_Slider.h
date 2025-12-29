@@ -16,7 +16,7 @@ extern "C" {
 #include <stdbool.h>
 
 // Node ID của Controller Slider
-#define CAN_SLIDER_ID 0x01
+#define CAN_SLIDER_ID 0x00
 
 // Frame ID VCU -> Controller Slider
 #define CAN_SLIDER_VCU_ID 0x200 + CAN_SLIDER_ID
@@ -57,7 +57,7 @@ typedef struct {
 	uint16_t motor_rpm;
 	uint8_t motor_temp;
 	uint8_t controller_temp;
-	uint8_t error_code;
+	uint32_t error_code;
 } Can_Slider_1_t;
 
 /* Gói tin Can Slider 2 */
@@ -71,6 +71,11 @@ typedef struct {
 typedef struct {
 	Can_Slider_1_t slider_1;
 	Can_Slider_2_t slider_2;
+	uint8_t motor_direc; // 0: Neutral, 1: Forward, 2: Reverse
+	uint32_t last_motor_rpm;
+	uint32_t rpm_accel;
+	uint32_t last_time_accel;
+	uint8_t raw_err_code;
 } Can_Slider_t;
 extern Can_Slider_t can_slider;
 

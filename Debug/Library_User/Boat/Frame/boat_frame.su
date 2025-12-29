@@ -1,0 +1,6 @@
+../Library_User/Boat/Frame/boat_frame.c:23:10:Boat_Frame_Event	48	static
+../Library_User/Boat/Frame/boat_frame.c:46:10:Boat_Frame_Ping_Complete	32	static
+../Library_User/Boat/Frame/boat_frame.c:90:23:encode_temp_u8	16	static
+../Library_User/Boat/Frame/boat_frame.c:97:17:build_driver_data	24	static
+../Library_User/Boat/Frame/boat_frame.c:123:17:build_sim_gps_data	24	static
+../Library_User/Boat/Frame/boat_frame.c:149:17:build_bms_data	24	static

@@ -7,8 +7,9 @@
 #include "string.h"
 #include "remote_firmware.h"
 #include "remote_boat.h"
+#include "boat_log.h"
+#include "network.h"
 
-#define HEADER_TOPIC_BOAT_MAINS "boat/mains/" // Header topic gửi dữ liệu chính
 #define HEADER_TOPIC_BOAT_EVENT "boat/event/" // header topic gửi sự kiện lỗi, thông báo
 #define HEADER_TOPIC_BOAT_LOG "boat/log/" // header topic gửi status Boat (ping)
 #define HEADER_TOPIC_BOAT_REMOTE "boat/remote/" // header topic gửi phản hồi lại server
@@ -17,11 +18,11 @@
 // retain
 #define RETAIN_TOPIC_BOAT_MAINS 0
 #define RETAIN_TOPIC_BOAT_EVENT 0
-#define RETAIN_TOPIC_BOAT_LOG 1
+#define RETAIN_TOPIC_BOAT_LOG 0
 #define RETAIN_TOPIC_BOAT_REMOTE 0
 
 #define QoS_TOPIC_BOAT_MAINS 0
-#define QoS_TOPIC_BOAT_EVENT 0
+#define QoS_TOPIC_BOAT_EVENT 1
 #define Qos_TOPIC_BOAT_LOG 1
 #define QoS_TOPIC_BOAT_REMOTE 0
 
@@ -33,6 +34,8 @@ uint32_t id_subscribed=0;// lưu trữ id đã sub
 char bufferTopic[SIZE_BUFFER_TOPIC];
 #define MAX_BUF_GLOBAL_CACHE 500
 uint8_t buf_Cache[MAX_BUF_GLOBAL_CACHE];
+#define MAX_BUF_EVENT 15
+uint8_t buf_Event[MAX_BUF_EVENT];
 
 // Hàm gửi xác nhận ACK với Qos 1,2
 void SendPuback(Client * c ,uint16_t  messageID)
@@ -201,6 +204,8 @@ void Client_Ping_Boat(Client * c)
 {
     uint8_t * frameDataNetwork=buf_Cache;
     uint32_t lenFrame=Boat_Frame_Ping_Complete(frameDataNetwork,300);
+    if (lenFrame==0)
+        return;
     *(c->len_buf_resp)=Mqtt_Encode_Publish(c->buf_resp,c->size_buf_resp,
                         (uint8_t *)HEADER_TOPIC_BOAT_LOG,
                         frameDataNetwork,lenFrame,
@@ -237,30 +242,30 @@ void Client_PublishFirm_ResponseRemote(Client * c)
     }
 }
 
-// void Client_PublishBoat_Event(Client * c)
-// {
-//     // sự kiện lỗi
-//     if(IsHaveMsgQueueGenEventLog())
-//     {
-//         gen_item_event_log_t item_log;
-//         uint8_t len_queue=GenEventLog_Dequeue((uint8_t *)&item_log);
-//         *(c->len_buf_resp)=Mqtt_Encode_Publish(c->buf_resp,c->size_buf_resp,
-//                         (uint8_t *)HEADER_TOPIC_BOAT_EVENT,
-//                         (uint8_t *)&item_log,len_queue,
-//                         RETAIN_TOPIC_BOAT_EVENT,QoS_TOPIC_BOAT_EVENT,ID_DEVICE);
-//         c->ipstack->mqttwrite(c->buf_resp,*(c->len_buf_resp));
-//     }
-// }
-
-void Client_PublishBoat_Mains(Client * c, e_boat_frame_cmd cmd)
+bool Client_PublishBoat_Event(Client * c)
 {
-    uint8_t * frameDataNetwork=buf_Cache;
-    uint32_t lenFrame=Boat_Frame_Mains_Complete(cmd, frameDataNetwork,100);
-    *(c->len_buf_resp)=Mqtt_Encode_Publish(c->buf_resp,c->size_buf_resp,
-                        (uint8_t *)HEADER_TOPIC_BOAT_MAINS,
-                        frameDataNetwork,lenFrame,
-                        RETAIN_TOPIC_BOAT_MAINS,QoS_TOPIC_BOAT_MAINS,ID_DEVICE);
-    c->ipstack->mqttwrite(c->buf_resp,*(c->len_buf_resp));
+    // sự kiện lỗi
+    if(IsHaveMsgQueueBoatEventLog())
+    {
+        uint8_t * frameEvent=buf_Event;
+        uint8_t len_frame_event=Boat_Frame_Event(frameEvent, MAX_BUF_EVENT);
+        if (len_frame_event==0)
+            return false;
+        *(c->len_buf_resp)=Mqtt_Encode_Publish(c->buf_resp,c->size_buf_resp,
+                        (uint8_t *)HEADER_TOPIC_BOAT_EVENT,
+                        frameEvent,len_frame_event,
+                        RETAIN_TOPIC_BOAT_EVENT,QoS_TOPIC_BOAT_EVENT,ID_DEVICE);
+        c->ipstack->mqttwrite(c->buf_resp,*(c->len_buf_resp));
+        return true;
+    } else
+    {
+    //nếu queue rỗng và ROM còn item thì load từ ROM vào queue
+        if(IsHaveMsgInRomBoatEventLog())
+        {
+            BoatEventLog_LoadFromRomToQueue();
+        }
+    }
+    return false;
 }
 
 uint8_t IsFindNewID(void)

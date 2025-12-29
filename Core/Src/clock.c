@@ -1,7 +1,6 @@
 #include "stm32f4xx_hal.h"
 #include "cytypes.h"
 #include "main.h"
-#include "Boat_param.h"
 
 unsigned int giay=0,ticktac=0;
 unsigned char timeChange=0;
@@ -78,9 +77,6 @@ void ClockTimer_Run(void)
     }
     else
         secondChange=0;
-    
-    // Kiểm tra timer và đặt cờ cho các CMD khi đủ thời gian chu kỳ
-    Boat_CmdTimer_Check();
 
 }
 

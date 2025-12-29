@@ -3,22 +3,29 @@
 
 #include "cytypes.h"
 
-// Danh sách lệnh REMOTE dành cho thuyền điện (chỉ cấu hình/giám sát, không điều khiển truyền động)
+/* Danh sách lệnh REMOTE dành cho thuyền điện 
+(chỉ cấu hình/giám sát, không điều khiển truyền động) */
 typedef enum
 {
-	// Cập nhật thời gian hệ thống
-    RM_BOAT_UPDATE_REALTIME = 0,
+    // SYSTEM
+    RM_BOAT_READ_SYSTEM_STATUS, // Đọc trạng thái hệ thống VCU
+    RM_BOAT_READ_VERSION,
 
-    // Đọc/ghi cấu hình mạng
+    // TIME
+    RM_BOAT_READ_TIME,
+    RM_BOAT_UPDATE_REALTIME,   
+
+    // NETWORK
     RM_BOAT_READ_NETWORK_CONFIG,
     RM_BOAT_WRITE_NETWORK_CONFIG,
 
-    // Đọc/ghi cấu hình timer
-    RM_BOAT_READ_TIMERS_CONFIG,
-    RM_BOAT_WRITE_TIMERS_CONFIG,
+    // GPS, SIM
+    RM_BOAT_READ_GPS_STATUS, // Đọc trạng thái GPS
+    RM_BOAT_READ_SIGNAL_SIM,
 
-    // Đọc thông tin firmware
-    RM_BOAT_READ_FW_VERSION,
+    // SAFETY
+    RM_BOAT_DISABLE_MOTOR,
+    RM_BOAT_ENABLE_MOTOR,
 
 } TYPE_GEN_REMOTE_CMD;
 
@@ -27,6 +34,7 @@ typedef enum
     RM_BOAT_SUCCESS = 0,
     ERR_BOAT_RM_NOT_VALID,          // Lệnh không hợp lệ / checksum sai
     ERR_BOAT_RM_UPDATE_REALTIME,    // Lỗi cài đặt thời gian
+    ERR_BOAT_RM_UPDATE_NETWORK_CONFIG, // Lỗi cài đặt cấu hình mạng
     ERR_BOAT_RM_FRAME_WRITE_TOO_SHORT,
 } ERR_BOAT_REMOTE_CMD;
 

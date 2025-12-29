@@ -34,7 +34,6 @@
 #include "sim.h"
 #include "system_update.h"
 #include "extern_flash.h"
-#include "Boat_param.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,6 +61,7 @@ SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart3;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
@@ -77,6 +77,7 @@ static void MX_USART6_UART_Init(void);
 static void MX_IWDG_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -129,14 +130,15 @@ int main(void)
   MX_IWDG_Init();
   MX_SPI1_Init();
   MX_TIM2_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
   ClockTimer_Init();
   ExRom_Init();
   Flash_Init();
   RealTime_Init();
+  BoatEventLog_Init();
   Network_Init();
   Sim_Init();
-  Boat_param_Init();
   BMS_Jikong_Init(&hcan1);
   Can_Slider_Init(&hcan1);
   // Bắt đầu CAN sau khi tất cả filter đã được config
@@ -144,6 +146,7 @@ int main(void)
     Error_Handler();
   }
   ST7565_init();
+  VCU_StateInit();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -162,6 +165,7 @@ int main(void)
     VCU_StateTask();
     process_menu();
     SystemUpdate_Run();
+    BoatEventUpdate();
     
     /* USER CODE END WHILE */
 
@@ -399,6 +403,39 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 19200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
 
 }
 

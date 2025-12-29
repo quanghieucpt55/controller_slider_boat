@@ -37,16 +37,12 @@ static menu_main_t vcu_state_to_main_menu(vcu_state_t state)
 	switch (state) {
 	case VCU_STATE_INIT:
 		return MENU_MAIN_INIT;
-	case VCU_STATE_WAITING:
-		return MENU_MAIN_WAITING;
 	case VCU_STATE_CAN:
 		return MENU_MAIN_CAN;
 	case VCU_STATE_PHYSICAL:
 		return MENU_MAIN_PHYSICAL;
 	case VCU_STATE_CHARGE:
 		return MENU_MAIN_CHARGE;
-	case VCU_STATE_IDLE:
-		return MENU_MAIN_IDLE;
 	case VCU_STATE_ERROR:
 		return MENU_MAIN_ERROR;
 	default:
@@ -142,10 +138,10 @@ throttle_mode_t throttle_mode = THROTTLE_NAVIGATION;
 throttle_param_t throttle_selected_param = THROTTLE_PARAM_BRAKE;
 
 io_mode_t io_mode = IO_NAVIGATION;
-io_param_t io_selected_param = IO_PARAM_SELECT_MODE;
+io_param_t io_selected_param = IO_PARAM_MOTOR_STATUS;
 // Biến trung gian để lưu trạng thái relay khi đang chỉnh sửa
 struct {
-    uint8_t select_mode_state;
+    uint8_t disable_motor;
     uint8_t contactor_state;
     uint8_t light_state;
 } io_states_temp = {0};
@@ -205,7 +201,7 @@ void display_can_info_2(void) {
 
     // Hiển thị lỗi
     char error_string[100];
-    switch (can_slider.slider_1.error_code) 
+    switch (can_slider.raw_err_code) 
     {
         case 0: strcpy(error_string, "Error: None"); break;
         case OVER_CURRENT: strcpy(error_string, "Error: Cur_Over"); break;
@@ -501,36 +497,36 @@ void display_io_info(void) {
     uint8_t blink_state = ((current_time / 500) % 2); // Nhấp nháy mỗi 500ms
     
     // Sử dụng biến trung gian nếu đang ở chế độ edit
-    uint8_t select_mode_state_display, contactor_state_display, light_state_display;
+    uint8_t disbale_motor_state_display, contactor_state_display, light_state_display;
     if (io_mode == IO_EDIT_VALUE) {
-        select_mode_state_display = io_states_temp.select_mode_state;
+        disbale_motor_state_display = io_states_temp.disable_motor;
         contactor_state_display = io_states_temp.contactor_state;
         light_state_display = io_states_temp.light_state;
     } else {
-        select_mode_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
+        disbale_motor_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
         contactor_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
         light_state_display = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
     }
     
-    // Hiển thị Select Mode
-    char select_mode_text[20];
-    if (select_mode_state_display) {
-        strcpy(select_mode_text, "Select Mode: ON");
+    // Hiển thị Disable Motor
+    char disable_motor_text[20];
+    if (disbale_motor_state_display) {
+        strcpy(disable_motor_text, "Disable Motor");
     } else {
-        strcpy(select_mode_text, "Select Mode: OFF");
+        strcpy(disable_motor_text, "Enable Motor");
     }
-    uint8_t select_mode_x = (LCD_WIDTH/2)-((strlen(select_mode_text)/2)*6);
-    uint8_t select_mode_y = 35;
-    ST7565_drawstring_anywhere(select_mode_x, select_mode_y, select_mode_text);
+    uint8_t disable_motor_x = (LCD_WIDTH/2)-((strlen(disable_motor_text)/2)*6);
+    uint8_t disable_motor_y = 35;
+    ST7565_drawstring_anywhere(disable_motor_x, disable_motor_y, disable_motor_text);
     
-    // Vẽ indicator cho Select Mode nếu đang được chọn
-    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_SELECT_MODE) {
+    // Vẽ indicator cho Disable Motor nếu đang được chọn
+    if (io_mode == IO_EDIT_SELECT && io_selected_param == IO_PARAM_MOTOR_STATUS) {
         if (blink_state) {
-            ST7565_drawrect(select_mode_x - 2, select_mode_y - 1, strlen(select_mode_text) * 6 + 4, 10, 1);
+            ST7565_drawrect(disable_motor_x - 2, disable_motor_y - 1, strlen(disable_motor_text) * 6 + 4, 10, 1);
         }
-    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_SELECT_MODE) {
+    } else if (io_mode == IO_EDIT_VALUE && io_selected_param == IO_PARAM_MOTOR_STATUS) {
         // Chế độ edit giá tri, hiển thị viền
-        ST7565_drawrect(select_mode_x - 2, select_mode_y - 1, strlen(select_mode_text) * 6 + 4, 10, 1);
+        ST7565_drawrect(disable_motor_x - 2, disable_motor_y - 1, strlen(disable_motor_text) * 6 + 4, 10, 1);
     }
     
     // Hiển thị Contactor
@@ -880,7 +876,7 @@ void display_main_init(void) {
     ST7565_drawstring_anywhere(5, 20, io_text);
     
     char mode_text[30];
-    sprintf(mode_text, "Mode: %s", outputs->select_can_mode ? "CAN" : "PHYS");
+    sprintf(mode_text, "Mode: %s", can_slider.slider_2.control_mode ? "CAN" : "PHYS");
     ST7565_drawstring_anywhere(5, 35, mode_text);
     
     // Hướng dẫn xem chi tiết
@@ -914,7 +910,7 @@ void display_main_waiting(void) {
     ST7565_drawstring_anywhere(70, 35, rpm_text);
     
     char mode_text[30];
-    sprintf(mode_text, "Mode: %s", vcu_ctx.outputs.select_can_mode ? "CAN" : "PHYS");
+    sprintf(mode_text, "Motor: %s", vcu_ctx.outputs.disable_motor ? "DISABLE" : "ENABLE");
     ST7565_drawstring_anywhere(5, 35, mode_text);
     
     char hint_text[] = "ENTER: Details";
@@ -962,13 +958,9 @@ void display_main_physical(void) {
     sprintf(contactor_text, "Contactor: %s", outputs->contactor_on ? "ON" : "OFF");
     ST7565_drawstring_anywhere(5, 20, contactor_text);
     
-    char forward_text[20];
-    sprintf(forward_text, "Forw: %s", HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_5) ? "ON" : "OFF");
-    ST7565_drawstring_anywhere(5, 35, forward_text);
-    
-    char reverse_text[20];
-    sprintf(reverse_text, "Revs: %s", HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_4) ? "ON" : "OFF");
-    ST7565_drawstring_anywhere(70, 35, reverse_text);
+    char select_text[20];
+    sprintf(select_text, "Motor: %s", outputs->disable_motor ? "DISABLE" : "ENABLE");
+    ST7565_drawstring_anywhere(5, 35, select_text);
     
     char hint_text[] = "ENTER: Details";
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
@@ -1047,11 +1039,10 @@ void display_main_error(void) {
     char error_text[] = "Critical Error!";
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(error_text)/2)*6), 20, error_text);
     
-    // Contactor luôn OFF khi lỗi
+    char select_text[20];
     const vcu_state_outputs_t *outputs = VCU_StateOutputs();
-    char contactor_text[20];
-    sprintf(contactor_text, "Contactor: OFF");
-    ST7565_drawstring_anywhere(5, 35, contactor_text);
+    sprintf(select_text, "Motor: %s", outputs->disable_motor ? "DISABLE" : "ENABLE");
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(select_text)/2)*6), 35, select_text);
     
     char hint_text[] = "ENTER: Details";
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
@@ -1200,8 +1191,8 @@ void process_button(void) {
                     debug_print("IO parameter selection changed\r\n");
                 } else if (io_mode == IO_EDIT_VALUE) {
                     // Chế độ chỉnh sửa trạng thái - toggle relay
-                    if (io_selected_param == IO_PARAM_SELECT_MODE) {
-                        io_states_temp.select_mode_state = !io_states_temp.select_mode_state;
+                    if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
+                        io_states_temp.disable_motor = !io_states_temp.disable_motor;
                     } else if (io_selected_param == IO_PARAM_CONTACTOR) {
                         io_states_temp.contactor_state = !io_states_temp.contactor_state;
                     } else if (io_selected_param == IO_PARAM_LIGHT) {
@@ -1289,13 +1280,13 @@ void process_button(void) {
                 if (io_selected_param < IO_PARAM_LIGHT) {
                     io_selected_param++;
                 } else {
-                    io_selected_param = IO_PARAM_SELECT_MODE; // Quay vòng
+                    io_selected_param = IO_PARAM_MOTOR_STATUS; // Quay vòng
                 }
                 debug_print("IO parameter selection changed\r\n");
             } else if (io_mode == IO_EDIT_VALUE) {
                 // Chế độ chỉnh sửa trạng thái - toggle relay
-                if (io_selected_param == IO_PARAM_SELECT_MODE) {
-                    io_states_temp.select_mode_state = !io_states_temp.select_mode_state;
+                if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
+                    io_states_temp.disable_motor = !io_states_temp.disable_motor;
                 } else if (io_selected_param == IO_PARAM_CONTACTOR) {
                     io_states_temp.contactor_state = !io_states_temp.contactor_state;
                 } else if (io_selected_param == IO_PARAM_LIGHT) {
@@ -1369,21 +1360,21 @@ void process_button(void) {
                 if (io_mode == IO_NAVIGATION) {
                     // Lần đầu ấn ENTER - vào chế độ chọn relay
                     io_mode = IO_EDIT_SELECT;
-                    io_selected_param = IO_PARAM_SELECT_MODE; // Reset về relay đầu tiên
+                    io_selected_param = IO_PARAM_MOTOR_STATUS; // Reset về relay đầu tiên
                     debug_print("Entered IO select mode\r\n");
                 } else if (io_mode == IO_EDIT_SELECT) {
                     // Ấn ENTER lần 2 - vào chế độ chỉnh sửa trạng thái
                     io_mode = IO_EDIT_VALUE;
                     // Khởi tạo biến trung gian từ giá trị GPIO hiện tại
-                    io_states_temp.select_mode_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
+                    io_states_temp.disable_motor = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
                     io_states_temp.contactor_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
                     io_states_temp.light_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
                     debug_print("Entered IO edit value mode\r\n");
                 } else if (io_mode == IO_EDIT_VALUE) {
                     // Ấn ENTER lần 3 - lưu giá trị và áp dụng vào GPIO
-                    if (io_selected_param == IO_PARAM_SELECT_MODE) {
-                        vcu_ctx.inputs.select_can_mode_request = io_states_temp.select_mode_state;
-                        debug_print("Select Mode state saved\r\n");
+                    if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
+                        vcu_ctx.inputs.disable_motor_request = io_states_temp.disable_motor;
+                        debug_print("Motor state saved\r\n");
                     } else if (io_selected_param == IO_PARAM_CONTACTOR) {
                         vcu_ctx.inputs.contactor_request = io_states_temp.contactor_state;
                         debug_print("Contactor state saved\r\n");
@@ -1456,9 +1447,6 @@ void process_menu(void) {
 		case MENU_MAIN_INIT:
 			display_main_init();
 			break;
-		case MENU_MAIN_WAITING:
-			display_main_waiting();
-			break;
 		case MENU_MAIN_CAN:
 			display_main_can();
 			break;
@@ -1467,9 +1455,6 @@ void process_menu(void) {
 			break;
 		case MENU_MAIN_CHARGE:
 			display_main_charge();
-			break;
-		case MENU_MAIN_IDLE:
-			display_main_idle();
 			break;
 		case MENU_MAIN_ERROR:
 			display_main_error();

@@ -19,19 +19,21 @@ void RealTime_Init(void)
 //    Realtime_UpdateNum(25, 9, 23, 11, 4,30);
 }
 
-uint8_t ValidTime(int year, int month, int day, int hour, int minute, int sec)
+uint8_t ValidTime(realtime_t * time)
 {
-    int err = 0;
-    err += year != 0 ? 0 : 1;
-    err += (month != 0 && month <= 12) ? 0 : 1;
-    err += day > 0 && day <= 31 ? 0 : 1;
-    err += hour >= 0 && hour <= 24 ? 0 : 1;
-    err += minute >= 0 && minute <= 60 ? 0 : 1;
-    err += sec >= 0 && sec <= 60 ? 0 : 1;
-    if (err == 0)
-        return 1;
-    else
-        return 0;
+	unsigned char result;
+    // Khong dong thoi bang 0
+	result =  time->year || time->month || time->day
+            || time->hour || time->minute || time->sec;				
+
+	result = result && (time->sec<60);		// giay <60
+	result = result && (time->minute<60);		// phut <60
+	result = result && (time->hour<24);		// gio 
+	result = result && (time->day<=31);		// ngay
+	result = result && (time->month>0);		// ngay
+	result = result && (time->month<=12);		// thang
+	result = result && (time->year!=0);		// thang
+	return result;
 }
 
 uint32_t RealtimeConvertValueToInterger(realtime_t * timeUpdate)

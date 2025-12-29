@@ -17,12 +17,12 @@ RM := rm -rf
 -include Library_User/Storage/subdir.mk
 -include Library_User/Network/Sim/subdir.mk
 -include Library_User/Network/Mqtt/subdir.mk
--include Library_User/Network/Frame/subdir.mk
 -include Library_User/Network/subdir.mk
 -include Library_User/Led_Error/subdir.mk
 -include Library_User/Display/Src/subdir.mk
 -include Library_User/Controller_Slider/Src/subdir.mk
--include Library_User/Charger/subdir.mk
+-include Library_User/Boat/Log/subdir.mk
+-include Library_User/Boat/Frame/subdir.mk
 -include Library_User/BMS_Jihong/subdir.mk
 -include Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk

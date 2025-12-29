@@ -123,6 +123,7 @@ typedef struct {
    uint8_t dchg_temp_high;       // nhiệt xả cao
    uint8_t chg_mos_fault;        // lỗi MOS sạc
    uint8_t dchg_mos_fault;       // lỗi MOS xả
+   uint32_t raw; // Thông tin lỗi bên trong raw
 } BMS_BmsErrInfo_t;
 
 /* 6.8 BMS_INFO - Thông tin chung hệ thống (ID: 0x18F428F4) */

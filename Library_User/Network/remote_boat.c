@@ -1,9 +1,9 @@
-//#include <modbus_cmd_gen.h>
 #include "remote_boat.h"
-//#include "generator_param.h"
 #include "global.h"
 #include "swconfig.h"
-
+#include "VCU_State.h"
+#include "realtime.h"
+#include "network.h"
 
 #define HEADER 0x60
 #define POS_HEADER 0
@@ -24,6 +24,31 @@ uint8_t boat_flag_response_remote=0;
 #define SIZE_BUF_RESPONSE_REMOTE 300
 uint8_t boat_buf_response_remote[SIZE_BUF_RESPONSE_REMOTE];
 uint32_t boat_len_bufResponseRemote=0;
+
+cystatus System_UpdateRTC(uint8_t * frame_time,uint8_t len_frame)
+{
+    if(len_frame<6)
+        return CYRET_BAD_DATA;
+    if(len_frame==6)
+    {
+        Realtime_UpdateNum(frame_time[5],
+                        frame_time[4],
+                        frame_time[3],
+                        frame_time[2],
+                        frame_time[1],
+                        frame_time[0]);
+    }
+    else
+        Realtime_UpdateWithDayOfWeek(frame_time[5],
+                        frame_time[4],
+                        frame_time[3],
+                        frame_time[2],
+                        frame_time[1],
+                        frame_time[0],
+                        frame_time[6]);
+
+    return CYRET_SUCCESS;
+}
 
 uint8_t IsOnMsg_BoatResponseRemote(void)
 {
@@ -80,11 +105,58 @@ ERR_BOAT_REMOTE_CMD RemoteBoat_ExcuteCommand(uint8_t * frame,uint8_t len_frame)
 			uint8_t * ptr_data=&frame[POS_DATA];
 			uint8_t len_data=frame[POS_LEN_DATA];
 			uint8_t cmd=frame[POS_CMD];
-			switch(cmd)
-			{
-				// lệnh điều khiển
-
-			}
+//			switch(cmd)
+//			{
+//                case RM_BOAT_READ_SYSTEM_STATUS:
+//                {
+//                    vcu_state_t vcu_state=VCU_StateGet();
+//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&vcu_state,sizeof(vcu_state));
+//                    break;
+//                }
+//                case RM_BOAT_READ_VERSION:
+//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&VERSION,sizeof(VERSION));
+//                    break;
+//                case RM_BOAT_READ_TIME:
+//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&currentTime,sizeof(currentTime));
+//                    break;
+//                case RM_BOAT_UPDATE_REALTIME:
+//                {
+//                    if(System_UpdateRTC(ptr_data,len_data)!=CYRET_SUCCESS)
+//                    {
+//                        errCode=ERR_BOAT_RM_UPDATE_REALTIME;
+//                    }
+//                    break;
+//                }
+//                case RM_BOAT_READ_NETWORK_CONFIG:
+//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&netConfig,sizeof(netConfig));
+//                    break;
+//                case RM_BOAT_WRITE_NETWORK_CONFIG:
+//                {
+//                    if(Network_WriteConfig(ptr_data,len_data)!=CYRET_SUCCESS)
+//                    {
+//                        errCode=ERR_BOAT_RM_UPDATE_NETWORK_CONFIG;
+//                    }
+//                    break;
+//                }
+//                case RM_BOAT_READ_GPS_STATUS:
+//                    Write_Response_Remote(cmd,(uint8_t *)&gpsData,sizeof(gpsData));
+//                    break;
+//                case RM_BOAT_READ_SIGNAL_SIM:
+//                {
+//                    uint8_t sim_signal=Sim_SignalQuanlityPercent();
+//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&sim_signal,sizeof(sim_signal));
+//                    break;
+//                }
+//                case RM_BOAT_DISABLE_MOTOR:
+//                    VCU_StateSetMotorStatus(DISABLE_MOTOR);
+//                    break;
+//                case RM_BOAT_ENABLE_MOTOR:
+//                    VCU_StateSetMotorStatus(ENABLE_MOTOR);
+//                    break;
+//                default:
+//                    errCode= ERR_BOAT_RM_NOT_VALID;
+//                    break;
+//			}
 		}
 	}
 	return errCode;

@@ -91,3 +91,11 @@ uint8_t IsNetwork_Ready(void)
 }
 
 
+cystatus Network_WriteConfig(uint8_t * data,uint8_t len_data)
+{
+    if(len_data!=sizeof(network_config_t))
+        return CYRET_BAD_DATA;
+    farcpy(&netConfig,data,len_data);
+    return CYRET_SUCCESS;
+}
+

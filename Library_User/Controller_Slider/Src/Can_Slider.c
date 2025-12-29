@@ -28,6 +28,8 @@ void Can_Slider_Init(CAN_HandleTypeDef *hcan) {
     HAL_CAN_ConfigFilter(hcan, &FilterCan);
 
 	HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+
+	can_slider.last_time_accel = HAL_GetTick();
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
@@ -42,7 +44,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 void Can_Slider_Process(Can_Slider_t *can_slider, CAN_RxHeaderTypeDef *hdr_ptr, uint8_t *d) {
 	switch (hdr_ptr->StdId) {
 		case CAN_SLIDER_1_ID:
-			Can_Slider_1_Process(&can_slider->slider_1, hdr_ptr, d);
+		{
+			uint8_t err;
+			err = Can_Slider_1_Process(&can_slider->slider_1, hdr_ptr, d);
+		}
 			break;
 		case CAN_SLIDER_2_ID:
 			Can_Slider_2_Process(&can_slider->slider_2, hdr_ptr, d);
@@ -53,11 +58,62 @@ void Can_Slider_Process(Can_Slider_t *can_slider, CAN_RxHeaderTypeDef *hdr_ptr, 
 Can_Slider_Error_Code_t Can_Slider_1_Process(Can_Slider_1_t *slider_1, CAN_RxHeaderTypeDef *hdr, uint8_t *d) {
 	slider_1->vehicle_mode.forward = d[0];
 	slider_1->vehicle_mode.reverse = d[1];
+	if (d[0] && !d[1]) {
+		can_slider.motor_direc = 1;
+	} else if (!d[0] && d[1]) {
+		can_slider.motor_direc = 2;
+	} else {
+		can_slider.motor_direc = 0;
+	}
 	slider_1->vehicle_mode.brake = d[2];
 	slider_1->motor_rpm = GET_U16_LE(&d[3]);
+	if (HAL_GetTick() - can_slider.last_time_accel > 1000) 
+{		if (slider_1->motor_rpm > can_slider.last_motor_rpm) {
+			can_slider.last_time_accel = HAL_GetTick();
+			can_slider.rpm_accel = slider_1->motor_rpm - can_slider.last_motor_rpm;
+			can_slider.last_motor_rpm = slider_1->motor_rpm;
+		} else {
+			can_slider.rpm_accel = 0;
+			can_slider.last_time_accel = HAL_GetTick();
+			can_slider.last_motor_rpm = slider_1->motor_rpm;
+		}
+	}
 	slider_1->motor_temp = d[5]-40;
 	slider_1->controller_temp = d[6]-40;
-	slider_1->error_code = (Can_Slider_Error_Code_t)d[7];
+	can_slider.raw_err_code = d[7];
+	switch (can_slider.raw_err_code)
+	{
+	case OVER_CURRENT:
+		slider_1->error_code = 0x0001;
+		break;
+	case CONTROLLER_TEMP_HIGH:
+		slider_1->error_code = 0x0002;
+		break;
+	case MOTOR_ENCODER_ERROR:
+		slider_1->error_code = 0x0004;
+		break;
+	case COMMUNICATION_ERROR:
+		slider_1->error_code = 0x0008;
+		break;
+	case UNDER_VOLTAGE_BATTERY:
+		slider_1->error_code = 0x0010;
+		break;
+	case OVER_VOLTAGE_BATTERY:
+		slider_1->error_code = 0x0020;
+		break;
+	case MOTOR_TEMP_HIGH:
+		slider_1->error_code = 0x0040;
+		break;
+	case MOTOR_TEMP_SENSOR_ERROR:
+		slider_1->error_code = 0x0080;
+		break;
+	case ACCELERATOR_FAULT:
+		slider_1->error_code = 0x0100;
+		break;
+	default:
+		slider_1->error_code = 0x0000;
+		break;
+	}
 	return slider_1->error_code;
 }
 

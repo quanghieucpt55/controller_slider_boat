@@ -44,7 +44,7 @@ typedef enum {
 } io_mode_t;
 
 typedef enum {
-    IO_PARAM_SELECT_MODE = 0,    // Relay Select Mode (PE2)
+    IO_PARAM_MOTOR_STATUS = 0,    // Relay Select Mode (PE2)
     IO_PARAM_CONTACTOR = 1,   // Relay Contactor (PE3)
     IO_PARAM_LIGHT = 2  // Relay Light (PE6)
 } io_param_t;

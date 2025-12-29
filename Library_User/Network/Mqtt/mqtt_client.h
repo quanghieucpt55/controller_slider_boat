@@ -8,6 +8,7 @@
 #include "mqtt_unsubscrice.h"
 #include "mqtt_interface.h"
 #include "boat_frame.h"
+#include <stdbool.h>
 
 typedef struct Client Client;
 struct Client {
@@ -45,14 +46,11 @@ void Client_SubTopic_FirmwareUpdate(Client * c);
 // Hàm connect tới Broker
 void Client_ConnectBroker(Client * c);
 
-// Hàm publish thông tin sự kiện lỗi, cảnh báo, thay đổi I/O
-//void Client_PublishBoat_Event(Client * c);
+//Hàm publish thông tin sự kiện lỗi, thay đổi trạng thái...
+bool Client_PublishBoat_Event(Client * c);
 
-/* Hàm publish heartbeat (ping) gồm các dữ liệu tổng quan
- * Hàm publish dữ liệu chi tiết gồm nhiều frame
-*/
+/* Hàm publish dữ liệu chi tiết */
 void Client_Ping_Boat(Client * c);// ping connect
-void Client_PublishBoat_Mains(Client * c, e_boat_frame_cmd cmd);
 
 // Hàm giải mã dữ liệu nhận được
 lwmqtt_err_t Mqtt_DecodePacket(Client * c);

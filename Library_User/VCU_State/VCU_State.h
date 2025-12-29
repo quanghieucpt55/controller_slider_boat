@@ -19,32 +19,41 @@ extern "C" {
 
 typedef enum {
 	VCU_STATE_INIT = 0,        // INIT & SELF-CHECK - khởi tạo lúc khởi động
-	VCU_STATE_WAITING = 1,     // Waiting F/R → N, Waiting RPM <100 - chờ tín hiệu ổn định trước khi cho phép điều khiển
-	VCU_STATE_CAN = 2,         // CAN MODE - giám sát hệ thống và điều khiển qua CAN
-	VCU_STATE_PHYSICAL = 3,    // Physical MODE - giám sát hệ thống và điều khiển qua chân ga, cần số
-	VCU_STATE_CHARGE = 4,      // CHARGER MODE - chế độ sạc pin
-	VCU_STATE_IDLE = 5,        // IDLE - giám sát cơ bản khi động cơ nghỉ
-	VCU_STATE_ERROR = 6,       // ERROR STATE - giám sát lỗi, mô tả lỗi
+	VCU_STATE_CAN = 1,         // CAN MODE - giám sát hệ thống và điều khiển qua CAN
+	VCU_STATE_PHYSICAL = 2,    // Physical MODE - giám sát hệ thống và điều khiển qua chân ga, cần số
+	VCU_STATE_CHARGE = 3,      // CHARGER MODE - chế độ sạc pin
+	VCU_STATE_ERROR = 4,       // ERROR STATE - giám sát lỗi, mô tả lỗi
 } vcu_state_t;
 
 extern vcu_state_t vcu_state;
 
+typedef enum {
+	DISABLE_MOTOR = 1,
+	ENABLE_MOTOR = 0,
+} motor_status_t;
+
+extern motor_status_t motor_status;
+
+void VCU_StateSetMotorStatus(motor_status_t status);
+motor_status_t VCU_StateGetMotorStatus(void);
+
 typedef struct {
+	bool init_completed;          // Khởi tạo hoàn tất
 	bool bms_ok;                  // BMS báo OK, không lỗi pin
 	bool slider_ok;               // Bộ controller slider ở trạng thái cho phép chạy
-	bool charger_plugged;         // Đang cắm sạc
-	bool charger_error;           // Lỗi do bộ sạc báo về
-	bool charger_stopped_full;    // Sạc đã dừng do đầy
+	bool charger_plugged;         // Đang cắm sạc (đọc từ BMS: bms.swSta.chgPlug)
+	bool charger_stopped_full;    // Sạc đã dừng do đầy (đọc từ BMS: chg_dev_sw hoặc SOC >= 100%)
+	bool charger_error;           // Lỗi sạc từ BMS (đọc từ bms.bmsErrInfo)
 	bool bms_critical_error;      // Lỗi BMS
 	bool slider_critical_error;   // Lỗi bộ điều khiển
 	bool system_fault;            // Lỗi hệ thống
-	bool select_can_mode_request; // Yêu cầu chọn mode CAN (true) hoặc Physical (false)
+	bool disable_motor_request; // Ngắt động cơ
 	bool contactor_request;       // Yêu cầu bật contactor (true = ON, false = OFF)
 } vcu_state_inputs_t;
 
 typedef struct {
 	bool contactor_on;      // Relay PE3 đóng contactor
-	bool select_can_mode;   // Mức xuất ra PE2 (0: chân ga, 1: CAN)
+	bool disable_motor;      // Relay PE2 đóng động cơ
 } vcu_state_outputs_t;
 
 typedef struct {
@@ -55,15 +64,19 @@ typedef struct {
 } vcu_state_context_t;
 extern vcu_state_context_t vcu_ctx;
 
+typedef struct {
+	uint8_t count_error_slider;
+	uint8_t count_error_bms;
+	uint8_t count_error_charger;
+} boat_error_count_t;
+
 // Menu chính - tương ứng với 7 VCU states
 typedef enum {
     MENU_MAIN_INIT = 0,      // Menu INIT - Khởi tạo và tự kiểm tra
-    MENU_MAIN_WAITING = 1,   // Menu WAITING - Chờ điều kiện an toàn
-    MENU_MAIN_CAN = 2,       // Menu CAN MODE - Điều khiển qua CAN
-    MENU_MAIN_PHYSICAL = 3,  // Menu PHYSICAL MODE - Điều khiển vật lý
-    MENU_MAIN_CHARGE = 4,    // Menu CHARGE - Chế độ sạc
-    MENU_MAIN_IDLE = 5,      // Menu IDLE - Chế độ chờ
-    MENU_MAIN_ERROR = 6,     // Menu ERROR - Trạng thái lỗi
+    MENU_MAIN_CAN = 1,       // Menu CAN MODE - Điều khiển qua CAN
+    MENU_MAIN_PHYSICAL = 2,  // Menu PHYSICAL MODE - Điều khiển vật lý
+    MENU_MAIN_CHARGE = 3,    // Menu CHARGE - Chế độ sạc
+    MENU_MAIN_ERROR = 4,     // Menu ERROR - Trạng thái lỗi
 } menu_main_t;
 
 // Menu chi tiết - sử dụng bitmask (mỗi menu là một bit riêng biệt)
