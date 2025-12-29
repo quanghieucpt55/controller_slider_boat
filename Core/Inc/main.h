@@ -73,16 +73,8 @@ extern void debug_print(const char* message);
 #define SPI1_FLASH_MISO_GPIO_Port GPIOA
 #define SPI1_FLASH_MOSI_Pin GPIO_PIN_7
 #define SPI1_FLASH_MOSI_GPIO_Port GPIOA
-#define HMI_TX_Pin GPIO_PIN_10
-#define HMI_TX_GPIO_Port GPIOB
-#define HMI_RX_Pin GPIO_PIN_11
-#define HMI_RX_GPIO_Port GPIOB
 #define PWR_KEY_Pin GPIO_PIN_15
 #define PWR_KEY_GPIO_Port GPIOD
-#define UART6_SIM_TX_Pin GPIO_PIN_6
-#define UART6_SIM_TX_GPIO_Port GPIOC
-#define UART6_SIM_RX_Pin GPIO_PIN_7
-#define UART6_SIM_RX_GPIO_Port GPIOC
 #define SOFT_I2C_SCL_Pin GPIO_PIN_6
 #define SOFT_I2C_SCL_GPIO_Port GPIOB
 #define SOFT_I2C_SDA_Pin GPIO_PIN_7

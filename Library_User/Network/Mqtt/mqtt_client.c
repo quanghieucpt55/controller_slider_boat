@@ -260,10 +260,10 @@ bool Client_PublishBoat_Event(Client * c)
     } else
     {
     //nếu queue rỗng và ROM còn item thì load từ ROM vào queue
-        if(IsHaveMsgInRomBoatEventLog())
-        {
-            BoatEventLog_LoadFromRomToQueue();
-        }
+        // if(IsHaveMsgInRomBoatEventLog())
+        // {
+        //     BoatEventLog_LoadFromRomToQueue();
+        // }
     }
     return false;
 }

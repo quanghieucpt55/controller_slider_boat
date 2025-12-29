@@ -25,12 +25,8 @@ uint16_t countRomEventLog = 0; // Số lượng item còn lại trong ROM
 
 void BoatEventLog_Init(void)
 {
-    // Khởi tạo queue và kiểm tra kết quả
     q_init(&queueEventLog,sizeof(boat_event_log_t),SIZE_QUEUE,FIFO,1);
-    q_init(&queueRomAddress,sizeof(uint16_t),SIZE_QUEUE,FIFO,1); // Queue lưu địa chỉ ROM
-    
-    countRomEventLog = 0; // Khởi tạo biến đếm
-    // tìm địa chỉ rom hiện tại và đếm số item hợp lệ trong ROM
+    // tìm địa chỉ rom hiện tại
     uint16_t currentAdr=ADR_EVENT_LOG_BASE;
     for(uint8_t i=0;i<TOTAL_EVENT_BOAT_LOG;i++)
     {
@@ -42,17 +38,17 @@ void BoatEventLog_Init(void)
                 id_rom_event_log=item.id;
                 adrCurrentRom_EventLog=currentAdr;
             }
-            // Đếm số item hợp lệ (id > 0)
-            if(item.id > 0)
+            else
             {
-                countRomEventLog++;
+
             }
+        }
+        else
+        {
+
         }
         currentAdr+=SIZE_PACKED_EVENT_LOG;// cộng 2 do cuối mỗi dữ liệu có thêm byte cs
     }
-    
-    // Load các item còn lại trong ROM vào queue khi khởi động
-    BoatEventLog_LoadFromRomToQueue();
 }
 
 uint32_t BoatEventLog_GetCurrentPos(void)
@@ -64,58 +60,23 @@ void BoatEventLog_Write(e_event_log_t event,uint32_t event_data)
 {
     if(!ValidTime(&currentTime))
     {
-        //đọc thời gian có lỗi thì thoát luôn
-        return;
+    //đọc thời gian có lỗi thì thoát luôn
+    return;
     }
     id_rom_event_log++;
-    // Xử lý overflow: nếu id đạt 0xFFFFFFFF, reset về 1
-    if(id_rom_event_log == 0)
-    {
-        id_rom_event_log = 1;
-    }
     // khởi tạo dữ liệu
     boat_package_event_log_t item;
-    item.id=id_rom_event_log;
     memcpy(item.log.date_time,&currentTime,6);
     item.log.event=event;
     item.log.event_data=event_data;
-    
-    // Ưu tiên lưu vào queue trước
-    // Kiểm tra queue đầy trước khi push
-    if(!q_isFull(&queueEventLog))
-    {
-        q_push(&queueEventLog,&item.log);
-        /* Push vào queue thành công, không cần lưu vào ROM
-        Item này không có trong ROM nên không cần lưu địa chỉ ROM
-        Push một giá trị đặc biệt (0xFFFF) để đánh dấu item này không có trong ROM */
-        uint16_t noRomAddress = 0xFFFF;
-        q_push(&queueRomAddress, &noRomAddress);
-        return;
-    }
-    
-    // Queue đầy, lưu vào ExROM
     // tịnh tiến địa chỉ
     adrCurrentRom_EventLog+=SIZE_PACKED_EVENT_LOG;
     if(adrCurrentRom_EventLog>=MAX_ADR_EVENT_LOG)// quá đia chỉ ->
     {
-        adrCurrentRom_EventLog=ADR_EVENT_LOG_BASE;
+    adrCurrentRom_EventLog=ADR_EVENT_LOG_BASE;
     }
-    // Kiểm tra xem địa chỉ này có item hợp lệ không (để tránh tăng count khi ghi đè)
-    boat_package_event_log_t old_item;
-    uint8_t had_valid_item = 0;
-    if(ExRom_ReadParam_WithCRC16(adrCurrentRom_EventLog, (uint8_t *)&old_item, sizeof(old_item)))
-    {
-        if(old_item.id > 0)
-        {
-            had_valid_item = 1; // Địa chỉ này đã có item hợp lệ
-        }
-    }
+    q_push(&queueEventLog,&item.log);
     ExRom_SaveParam_WithCRC16(adrCurrentRom_EventLog,(uint8_t *)&item,sizeof(item));
-    // Tăng count nếu ghi vào vị trí trống hoặc ghi đè item đã xóa
-    if(!had_valid_item)
-    {
-        countRomEventLog++;
-    }
 }
 
 // kiểm tra dữ liệu bộ nhớ queue
@@ -161,21 +122,7 @@ uint8_t BoatEventLog_Dequeue(uint8_t * buf)
     // check queue not empty
     if(q_getCount(&queueEventLog)>0)
     {
-        if (q_pop(&queueEventLog,buf))
-        {
-            // Lấy địa chỉ ROM tương ứng và xóa item đó khỏi ROM
-            uint16_t romAdr;
-            if(q_pop(&queueRomAddress, &romAdr))
-            {
-                // Chỉ xóa khỏi ROM nếu item này có trong ROM (romAdr != 0xFFFF)
-                if(romAdr != 0xFFFF)
-                {
-                    // Xóa item khỏi ROM sau khi đã lấy ra khỏi queue
-                    BoatEventLog_DeleteFromRom(romAdr);
-                }
-            }
-        }
-        
+        q_pop(&queueEventLog,buf);
         return sizeof(boat_event_log_t);
     }
     return 0;
