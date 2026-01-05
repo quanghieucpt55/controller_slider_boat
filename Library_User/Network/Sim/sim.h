@@ -7,7 +7,8 @@ enum e_sim_status
 {
     Sim_StartUp_Status=0,
     Sim_NoSim_Status,
-    Sim_CheckSignal_Status,
+    Sim_CheckSignal_Status_1,
+	Sim_CheckSignal_Status_2,
     Sim_CheckNetwork_Status,
     Sim_Connecting_Status,
     Sim_Connected_Status,

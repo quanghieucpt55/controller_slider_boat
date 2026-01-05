@@ -1058,8 +1058,9 @@ void display_network(void)
 
     memset(displayBuffer, 0, LCD_BUFFER_SIZE);
     
-    char title_text[] = "NETWORK";
-    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    char step_sim[10];
+    sprintf(step_sim, "Step: %d", simStep);
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(step_sim)/2)*6), 5, step_sim);
 
     char simStatus_text[20];
     switch(simStatus)
@@ -1074,9 +1075,14 @@ void display_network(void)
             strcpy(simStatus_text, "No SIM...");
         }
         break;
-        case Sim_CheckSignal_Status:
+        case Sim_CheckSignal_Status_1:
         {
             strcpy(simStatus_text, "Checking signal...");
+        }
+        break;
+        case Sim_CheckSignal_Status_2:
+        {
+            strcpy(simStatus_text, "SIM GPRS setup");
         }
         break;
         case Sim_CheckNetwork_Status:

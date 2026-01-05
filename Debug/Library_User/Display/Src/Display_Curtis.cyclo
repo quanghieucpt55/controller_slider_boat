@@ -24,6 +24,6 @@
 ../Library_User/Display/Src/Display_Curtis.c:974:6:display_main_charge	2
 ../Library_User/Display/Src/Display_Curtis.c:1007:6:display_main_idle	2
 ../Library_User/Display/Src/Display_Curtis.c:1032:6:display_main_error	2
-../Library_User/Display/Src/Display_Curtis.c:1056:6:display_network	9
-../Library_User/Display/Src/Display_Curtis.c:1128:6:process_button	95
-../Library_User/Display/Src/Display_Curtis.c:1432:6:process_menu	34
+../Library_User/Display/Src/Display_Curtis.c:1056:6:display_network	10
+../Library_User/Display/Src/Display_Curtis.c:1134:6:process_button	95
+../Library_User/Display/Src/Display_Curtis.c:1438:6:process_menu	34

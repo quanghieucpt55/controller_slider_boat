@@ -3,7 +3,7 @@
 
 #include "cytypes.h"
 
-#define TOTAL_EVENT_BOAT_LOG 150
+#define TOTAL_EVENT_BOAT_LOG 50
 
 typedef enum e_event_log_t e_event_log_t;
 enum e_event_log_t

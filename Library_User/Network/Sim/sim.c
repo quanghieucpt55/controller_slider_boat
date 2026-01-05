@@ -46,6 +46,7 @@ uint8_t simModeSecurity=MODE_NOT_SECURITY;
 uint8_t buffer_recv_gprs[BUFFER_RECV_GPRS];
 uint8_t buffer_resp_gprs[BUFFER_RESP_GPRS];
 int16_t  SIM_HaveCommand=0;
+uint8_t SIM_HaveAck = 0; // có phản hồi từ server
 uint32_t len_buf_recv_gprs,len_buf_send_gprs;
 int32_t lastTime2Sim=0,lastTime3Sim=0; // thời gian trễ thứ 2 của sim
 int32_t gprs_timeNewMsgMqtt;
@@ -185,6 +186,7 @@ void Sim_MqttMsgHandle(lwmqtt_message_t * msg)
         }
         break;
         case LWMQTT_PUBACK_PACKET:
+            SIM_HaveAck = 1;
             break;
         case LWMQTT_PUBREC_PACKET:
         case LWMQTT_PUBREL_PACKET:
@@ -251,6 +253,7 @@ void Sim1CountTo(int count)
 void NextStep(void)
 {
 	simStep++;
+    for (int i=0;i<1000;i++);
 	simTimeOut=0;
 }
 void NextCmdStep(void)
@@ -463,6 +466,7 @@ int Sim_PWOn(void)			// 0
 		case 0x06:
 			if (WaitAnswer("OK"))						// Module buffer_recv_gprs
             {
+                simErrorRetry=0;
 				return 2;
             }
 			else if (Wait(5))							// Module don't buffer_recv_gprs
@@ -473,7 +477,26 @@ int Sim_PWOn(void)			// 0
                     NextStep();
             }
             break;
-		case 0x07:
+	    // case 7:
+	    // {
+		//     GPRS_Ask("AT+IPR=9600;&W\r\n");
+	    // }
+		// break;
+	    // case 8:
+	    // {
+		//     if (WaitAnswer("OK"))
+		// 		return 2;
+		// 	else if(WaitAnswer("ERROR"))
+		// 	{
+		// 		Sim1_CountToStepTo(COUNT_SIM_PWON,2);
+		// 		return 0;
+		// 	}
+		// 	else
+		// 		if (Wait(3))
+		// 			return -1;
+	   	// }
+		// break;
+		case 0x09:
 			return -1;
 			break;
 		default:
@@ -562,12 +585,12 @@ int Sim_StartUp(void)			// 2
 //                Sim1_CountToStepTo(COUNT_SIM_PWON,2);
 //            }
 //        break;
-		case 2:
+		case 0x02:
 			GPRS_Ask("AT+CPIN?\r\n");							// Test connection
 			break;
-		case 3:
+		case 0x03:
 			if (WaitAnswer("+CPIN: READY")||WaitAnswer("OK"))						// Module buffer_recv_gprs
-				NextStep();
+			 NextStep();
 			else if (Wait(2))	//2								// Module don't buffer_recv_gprs or No SIM
             {
                 if(WaitAnswer("NO SIM"))
@@ -577,19 +600,28 @@ int Sim_StartUp(void)			// 2
                 Sim1_CountToStepTo(COUNT_SIM_PWON,2);
             }
 			break;
-		case 4:												// Check NetworkMqtt SIM_PROVIDER
+		case 0x04:												// Check NetworkMqtt SIM_PROVIDER
 			GPRS_Ask("AT+COPS?\r\n");							// Test connection
-            simStatus=Sim_CheckSignal_Status;
+            simStatus=Sim_CheckSignal_Status_1;
 			break;
-		case 5:
+		case 0x05:
 			if (WaitAnswer("+COPS: 0,"))
 			{
-                if(Wait(2))
-				    NextStep();
+                if(Wait(2)) {
+                    simErrorRetry=0;
+                    NextStep();
+                }	    
 			}
-			else if (Wait(1))//2							// Module don't buffer_recv_gprs or No SIM
-			{											// WaitAnswer("+COPS: 0")
-				return -1;
+			else if (Wait(5))//2							// Module don't buffer_recv_gprs or No SIM
+			{
+                											// WaitAnswer("+COPS: 0")
+                if (++simErrorRetry>=4)
+                {
+                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
+                    return 0;
+                } else {
+                    return -1;
+                }
 			}
 			break;
         case 0x06:
@@ -633,19 +665,26 @@ int Sim_StartUp(void)			// 2
 
 int Sim_SetUp(void)
 {
-    simStatus=Sim_CheckSignal_Status;
+    simStatus=Sim_CheckSignal_Status_2;
     switch (simStep)
 	{
         case 0:
             GPRS_Ask("AT+CGATT=1\r\n");
+            simErrorRetry=0;
+            NextStep();
         break;
         case 1:
             if(WaitAnswer("OK"))
 				NextStep();
-			else if(Wait(2))
-				return -2;
-			break;
-        break;
+			else if(Wait(2)) {
+                if (++simErrorRetry>=10)
+                {
+                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
+                } else {
+                    return -2;
+                }
+            }
+            break;
 		case 2:
             GPRS_Ask("AT+CGATT?\r\n");
             break;
@@ -702,14 +741,14 @@ int Sim_SetUp(void)
 		        if (Wait(3))
 					return -1;
             break;
-//        case 8:
-//        {
-//        	GPRS_Ask("AT+IPR=115200;&W\r\n");
-//        }
+//       case 8:
+//       {
+//       	GPRS_Ask("AT+IPR=19200;&W\r\n");
+//       }
 //		break;
-//        case 9:
-//        {
-//        	if (WaitAnswer("OK"))
+//       case 9:
+//       {
+//       	if (WaitAnswer("OK"))
 //				NextStep();
 //			else if(WaitAnswer("ERROR"))
 //			{
@@ -719,7 +758,7 @@ int Sim_SetUp(void)
 //			else
 //				if (Wait(3))
 //					return -1;
-//        }
+//       }
 //		break;
 
 //        case 8:
@@ -988,8 +1027,9 @@ int Sim_MqttComunication(void)
             }
             break;
         case 2:
-            if(Sim_CheckMsgMqtt(LWMQTT_PUBACK_PACKET)==CYRET_SUCCESS)
+            if(SIM_HaveAck)
             {
+                SIM_HaveAck = 0;
                 return -1;
             }
             else if(Wait(3))// đợi 3s

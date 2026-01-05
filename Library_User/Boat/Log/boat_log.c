@@ -11,6 +11,7 @@
 #include "main.h"
 
 gps_data_t gpsData = {.latitude = 21.019627694455533*10000000, .longitude = 105.79244619716383*10000000, .sog = 1456, .cog = 180, .state = 3};  
+extern gps_data_t gpsData;
 
 #define SIZE_PACKED_EVENT_LOG (sizeof(boat_package_event_log_t)+2)
 #define MAX_ADR_EVENT_LOG (SIZE_PACKED_EVENT_LOG*TOTAL_EVENT_BOAT_LOG+ADR_EXROM_EVENT_LOG)

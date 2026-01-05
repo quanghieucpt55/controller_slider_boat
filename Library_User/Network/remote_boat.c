@@ -4,6 +4,7 @@
 #include "VCU_State.h"
 #include "realtime.h"
 #include "network.h"
+#include "boat_log.h"
 
 #define HEADER 0x60
 #define POS_HEADER 0
@@ -105,58 +106,75 @@ ERR_BOAT_REMOTE_CMD RemoteBoat_ExcuteCommand(uint8_t * frame,uint8_t len_frame)
 			uint8_t * ptr_data=&frame[POS_DATA];
 			uint8_t len_data=frame[POS_LEN_DATA];
 			uint8_t cmd=frame[POS_CMD];
-//			switch(cmd)
-//			{
-//                case RM_BOAT_READ_SYSTEM_STATUS:
-//                {
-//                    vcu_state_t vcu_state=VCU_StateGet();
-//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&vcu_state,sizeof(vcu_state));
-//                    break;
-//                }
-//                case RM_BOAT_READ_VERSION:
-//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&VERSION,sizeof(VERSION));
-//                    break;
-//                case RM_BOAT_READ_TIME:
-//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&currentTime,sizeof(currentTime));
-//                    break;
-//                case RM_BOAT_UPDATE_REALTIME:
-//                {
-//                    if(System_UpdateRTC(ptr_data,len_data)!=CYRET_SUCCESS)
-//                    {
-//                        errCode=ERR_BOAT_RM_UPDATE_REALTIME;
-//                    }
-//                    break;
-//                }
-//                case RM_BOAT_READ_NETWORK_CONFIG:
-//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&netConfig,sizeof(netConfig));
-//                    break;
-//                case RM_BOAT_WRITE_NETWORK_CONFIG:
-//                {
-//                    if(Network_WriteConfig(ptr_data,len_data)!=CYRET_SUCCESS)
-//                    {
-//                        errCode=ERR_BOAT_RM_UPDATE_NETWORK_CONFIG;
-//                    }
-//                    break;
-//                }
-//                case RM_BOAT_READ_GPS_STATUS:
-//                    Write_Response_Remote(cmd,(uint8_t *)&gpsData,sizeof(gpsData));
-//                    break;
-//                case RM_BOAT_READ_SIGNAL_SIM:
-//                {
-//                    uint8_t sim_signal=Sim_SignalQuanlityPercent();
-//                    WriteBoat_Response_Remote(cmd,(uint8_t *)&sim_signal,sizeof(sim_signal));
-//                    break;
-//                }
-//                case RM_BOAT_DISABLE_MOTOR:
-//                    VCU_StateSetMotorStatus(DISABLE_MOTOR);
-//                    break;
-//                case RM_BOAT_ENABLE_MOTOR:
-//                    VCU_StateSetMotorStatus(ENABLE_MOTOR);
-//                    break;
-//                default:
-//                    errCode= ERR_BOAT_RM_NOT_VALID;
-//                    break;
-//			}
+			switch(cmd)
+			{
+               case RM_BOAT_READ_SYSTEM_STATUS:
+               {
+                   vcu_state_t vcu_state=VCU_StateGet();
+                   WriteBoat_Response_Remote(cmd,(uint8_t *)&vcu_state,sizeof(vcu_state));
+                   break;
+               }
+               case RM_BOAT_READ_VERSION:
+                   WriteBoat_Response_Remote(cmd,(uint8_t *)&APP_VERSION,sizeof(APP_VERSION));
+                   break;
+               case RM_BOAT_READ_TIME:
+                   WriteBoat_Response_Remote(cmd,(uint8_t *)&currentTime,sizeof(currentTime));
+                   break;
+               case RM_BOAT_UPDATE_REALTIME:
+               {
+                   if(System_UpdateRTC(ptr_data,len_data)!=CYRET_SUCCESS)
+                   {
+                       errCode=ERR_BOAT_RM_UPDATE_REALTIME;
+                   }
+                   break;
+               }
+               case RM_BOAT_READ_NETWORK_CONFIG:
+                   WriteBoat_Response_Remote(cmd,(uint8_t *)&netConfig,sizeof(netConfig));
+                   break;
+               case RM_BOAT_WRITE_NETWORK_CONFIG:
+               {
+                   if(Network_WriteConfig(ptr_data,len_data)!=CYRET_SUCCESS)
+                   {
+                       errCode=ERR_BOAT_RM_UPDATE_NETWORK_CONFIG;
+                   }
+                   break;
+               }
+               case RM_BOAT_READ_GPS_STATUS:
+            	   WriteBoat_Response_Remote(cmd,(uint8_t *)&gpsData,sizeof(gpsData));
+                   break;
+               case RM_BOAT_READ_SIGNAL_SIM:
+               {
+                   uint8_t sim_signal=Sim_SignalQuanlityPercent();
+                   WriteBoat_Response_Remote(cmd,(uint8_t *)&sim_signal,sizeof(sim_signal));
+                   break;
+               }
+               case RM_BOAT_CONTROL_MOTOR:
+               {
+            	   if(len_data < 1)
+            	   {
+            		   errCode = ERR_BOAT_RM_NOT_VALID;
+            		   break;
+            	   }
+            	   motor_status_t motor_status;
+            	   if(ptr_data[0] == DISABLE_MOTOR)
+            	   {
+            		   motor_status = DISABLE_MOTOR;
+            	   }
+            	   else
+            	   {
+            		   motor_status = ENABLE_MOTOR;
+            	   }
+                   VCU_StateSetMotorStatus(!motor_status);
+                   break;
+               }
+               case RM_BOAT_CONTROL_FAN:
+                   break;
+               case RM_BOAT_CONTROL_AC:
+            	   break;
+               default:
+                   errCode= ERR_BOAT_RM_NOT_VALID;
+                   break;
+			}
 		}
 	}
 	return errCode;
