@@ -6,6 +6,7 @@
  */
 
  #include "jikong_can.h"
+ #include <string.h>
 
 /* ==============================================================
 *  Hàm macro đọc dữ liệu little-endian (theo chuẩn BMS Jikong)
@@ -16,6 +17,45 @@
 #define GET_U16_BE(p)  ((uint16_t)(((p)[0] << 8) | (p)[1]))
 #define GET_U32_LE(p)  ((uint32_t)((p)[0] | ((p)[1] << 8) | ((p)[2] << 16) | ((p)[3] << 24)))
 
+BMS_Jikong_t bms;
+
+volatile uint32_t bms_jikong_last_rx_tick = 0;
+
+static uint32_t bms_jikong_last_alm_tick = 0;
+static uint32_t bms_jikong_last_err_tick = 0;
+
+#define BMS_JIKONG_ALIVE_TIMEOUT_MS      (10000u)
+#define BMS_JIKONG_ALM_CLEAR_TIMEOUT_MS  (10000u)
+#define BMS_JIKONG_ERR_CLEAR_TIMEOUT_MS  (10000u)
+
+void BMS_Jikong_Service(void)
+{
+	const uint32_t now = HAL_GetTick();
+
+	if (bms_jikong_last_rx_tick == 0) {
+		return;
+	}
+
+	/* Nếu BMS offline -> clear toàn bộ để tránh giữ giá trị cũ */
+	if ((now - bms_jikong_last_rx_tick) > BMS_JIKONG_ALIVE_TIMEOUT_MS) {
+		memset(&bms, 0, sizeof(bms));
+		bms_jikong_last_rx_tick = 0;
+		bms_jikong_last_alm_tick = 0;
+		bms_jikong_last_err_tick = 0;
+		return;
+	}
+
+	if ((bms_jikong_last_alm_tick != 0) &&
+		((now - bms_jikong_last_alm_tick) > BMS_JIKONG_ALM_CLEAR_TIMEOUT_MS)) {
+		memset(&bms.almInfo, 0, sizeof(bms.almInfo));
+	}
+
+	if ((bms_jikong_last_err_tick != 0) &&
+		((now - bms_jikong_last_err_tick) > BMS_JIKONG_ERR_CLEAR_TIMEOUT_MS)) {
+		memset(&bms.bmsErrInfo, 0, sizeof(bms.bmsErrInfo));
+	}
+}
+
  /* ==============================================================
   *                   FRAME DECODING FUNCTION
   * ==============================================================
@@ -24,7 +64,6 @@
   * rồi cập nhật giá trị tương ứng vào cấu trúc BMS_Jikong_t.
   * ==============================================================
   */
- BMS_Jikong_t bms;
 
 void BMS_Jikong_Init(CAN_HandleTypeDef *hcan) {
 	CAN_FilterTypeDef FilterCan;
@@ -48,6 +87,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 		CAN_RxHeaderTypeDef hdr;
 		uint8_t d[8];
 		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &hdr, d);
+		bms_jikong_last_rx_tick = HAL_GetTick();
 		BMS_Jikong_Process(&bms, &hdr, d);
 	}
 }
@@ -57,6 +97,29 @@ void BMS_Jikong_Process(BMS_Jikong_t *bms, CAN_RxHeaderTypeDef *hdr, uint8_t *d)
 	// Lấy ID thực tế (chuẩn hoặc mở rộng)
 	uint32_t id = (hdr->IDE == CAN_ID_EXT) ? hdr->ExtId : hdr->StdId;
 
+//	uint32_t raw = 0x00200003;   // ghép 4 byte (little-endian)
+//
+//	bms->bmsErrInfo.raw = raw;
+//	bms->bmsErrInfo.line_res_high     = (raw >> 0)  & 0x01;
+//	bms->bmsErrInfo.mos_overtemp      = (raw >> 1)  & 0x01;
+//	bms->bmsErrInfo.cell_count_mismatch = (raw >> 2)  & 0x01;
+//	bms->bmsErrInfo.cur_sensor_fault  = (raw >> 3)  & 0x01;
+//	bms->bmsErrInfo.cell_overvolt     = (raw >> 4)  & 0x01;
+//	bms->bmsErrInfo.pack_overvolt     = (raw >> 5)  & 0x01;
+//	bms->bmsErrInfo.chg_overcurrent   = (raw >> 6)  & 0x01;
+//	bms->bmsErrInfo.chg_short         = (raw >> 7)  & 0x01;
+//	bms->bmsErrInfo.chg_temp_high     = (raw >> 8)  & 0x01;
+//	bms->bmsErrInfo.chg_temp_low      = (raw >> 9)  & 0x01;
+//	bms->bmsErrInfo.comm_inner_fault  = (raw >> 10) & 0x01;
+//	bms->bmsErrInfo.cell_undervolt    = (raw >> 11) & 0x01;
+//	bms->bmsErrInfo.pack_undervolt    = (raw >> 12) & 0x01;
+//	bms->bmsErrInfo.dchg_overcurrent  = (raw >> 13) & 0x01;
+//	bms->bmsErrInfo.dchg_short        = (raw >> 14) & 0x01;
+//	bms->bmsErrInfo.dchg_temp_high    = (raw >> 15) & 0x01;
+//	bms->bmsErrInfo.chg_mos_fault     = (raw >> 16) & 0x01;
+//	bms->bmsErrInfo.dchg_mos_fault    = (raw >> 17) & 0x01;
+	
+	
 	switch (id)
 	{
 		/* ----------------------------------------------------------
@@ -106,8 +169,9 @@ void BMS_Jikong_Process(BMS_Jikong_t *bms, CAN_RxHeaderTypeDef *hdr, uint8_t *d)
 		* ---------------------------------------------------------- */
 		case ID_ALM_INFO: {
 			uint32_t raw = GET_U32_LE(&d[0]); // Lấy 4 byte đầu tiên
-
 			// Giải mã từng nhóm bit
+			bms_jikong_last_alm_tick = HAL_GetTick();
+			bms->almInfo.raw = raw;
 			bms->almInfo.cell_overvolt =  (raw >> 0)  & 0x0003;   // Quá áp
 			bms->almInfo.cell_undervolt = (raw >> 2)  & 0x0003;   // Thấp áp
 			bms->almInfo.delta_over =     (raw >> 8)  & 0x0003;   // ΔV quá lớn
@@ -155,6 +219,7 @@ void BMS_Jikong_Process(BMS_Jikong_t *bms, CAN_RxHeaderTypeDef *hdr, uint8_t *d)
 		case ID_BMSERR_INFO: {
 			uint32_t raw = GET_U32_LE(&d[0]);   // ghép 4 byte (little-endian)
 
+			bms_jikong_last_err_tick = HAL_GetTick();
 			bms->bmsErrInfo.raw = raw;
 			bms->bmsErrInfo.line_res_high     = (raw >> 0)  & 0x01;
 			bms->bmsErrInfo.mos_overtemp      = (raw >> 1)  & 0x01;

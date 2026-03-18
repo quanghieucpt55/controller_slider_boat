@@ -1,0 +1,16 @@
+../Library_User/GNSS/gps_rmc.c:13:12:hex2nibble	6
+../Library_User/GNSS/gps_rmc.c:21:12:parse_u16_2digits	3
+../Library_User/GNSS/gps_rmc.c:29:12:ddmm_to_deg1e7	22
+../Library_User/GNSS/gps_rmc.c:100:12:dec_to_x100	12
+../Library_User/GNSS/gps_rmc.c:130:12:knots_to_kmh_x100	14
+../Library_User/GNSS/gps_rmc.c:186:6:gps_rmc_init	1
+../Library_User/GNSS/gps_rmc.c:198:12:nmea_checksum_ok	8
+../Library_User/GNSS/gps_rmc.c:216:12:is_rmc_sentence	7
+../Library_User/GNSS/gps_rmc.c:224:12:utc_datetime_valid	2
+../Library_User/GNSS/gps_rmc.c:239:12:split_fields	5
+../Library_User/GNSS/gps_rmc.c:256:12:parse_rmc_to_struct	27
+../Library_User/GNSS/gps_rmc.c:342:12:handle_line	4
+../Library_User/GNSS/gps_rmc.c:355:5:gps_rmc_feed_byte	11
+../Library_User/GNSS/gps_rmc.c:412:5:gps_rmc_process	5
+../Library_User/GNSS/gps_rmc.c:434:5:gps_rmc_pop	3
+../Library_User/GNSS/gps_rmc.c:443:6:gps_rmc_clear_new	1

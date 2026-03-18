@@ -9,9 +9,11 @@
 #include "jikong_can.h"
 #include "VCU_State.h"
 #include "main.h"
+#include "modbus_slave_base.h"
+#include "modbus_slave_define.h"
+#include "gps_rmc.h"
 
-gps_data_t gpsData = {.latitude = 21.019627694455533*10000000, .longitude = 105.79244619716383*10000000, .sog = 1456, .cog = 180, .state = 3};  
-extern gps_data_t gpsData;
+gps_data_t gpsData = {0};
 
 #define SIZE_PACKED_EVENT_LOG (sizeof(boat_package_event_log_t)+2)
 #define MAX_ADR_EVENT_LOG (SIZE_PACKED_EVENT_LOG*TOTAL_EVENT_BOAT_LOG+ADR_EXROM_EVENT_LOG)
@@ -78,6 +80,32 @@ void BoatEventLog_Write(e_event_log_t event,uint32_t event_data)
     }
     q_push(&queueEventLog,&item.log);
     ExRom_SaveParam_WithCRC16(adrCurrentRom_EventLog,(uint8_t *)&item,sizeof(item));
+}
+
+void BoatGPS_Task(void)
+{
+    gnss_data_t fix;
+    if (!gps_rmc_pop(&fix)) return;
+
+    int32_t lat = (int32_t)fix.latitude;
+    int32_t lon = (int32_t)fix.longitude;
+    if (fix.northSouth == 'S') lat = -lat;
+    if (fix.eastWest  == 'W') lon = -lon;
+
+    gpsData.latitude  = lat;
+    gpsData.longitude = lon;
+
+    // Boat payload đang dùng:
+    // - sog: km/h * 100 (u16)
+    // - cog: deg  * 100 (u16)
+    uint32_t sog_x100 = fix.speed; // fix.speed = km/h*100
+    uint32_t cog_x100 = fix.cog;   // fix.cog   = deg*100
+    if (sog_x100 > 0xFFFFu) sog_x100 = 0xFFFFu;
+    if (cog_x100 > 0xFFFFu) cog_x100 = 0xFFFFu;
+    gpsData.sog = (uint16_t)sog_x100;
+    gpsData.cog = (uint16_t)cog_x100;
+
+    gpsData.state = fix.state;
 }
 
 // kiểm tra dữ liệu bộ nhớ queue
@@ -211,6 +239,7 @@ void BoatEventUpdate(void)
     if (current_event_data.pow_status != vcu_ctx.outputs.contactor_on) {
         current_event_data.pow_status = vcu_ctx.outputs.contactor_on;
         BoatEventLog_Write(Pow_Status_Driver, current_event_data.pow_status);
+        inputReg[ADR_INPUT_EVENT_POWER_STATUS] = current_event_data.pow_status;
     }
     if (current_event_data.err_bms != bms.bmsErrInfo.raw) {
         current_event_data.err_bms = bms.bmsErrInfo.raw;
@@ -223,22 +252,28 @@ void BoatEventUpdate(void)
     if (current_event_data.motor_direc != can_slider.motor_direc) {
         current_event_data.motor_direc = can_slider.motor_direc;
         BoatEventLog_Write(ChDirection_Motor, current_event_data.motor_direc);
+        inputReg[ADR_INPUT_EVENT_GEAR_STATUS] = current_event_data.motor_direc;
     } 
     if (can_slider.rpm_accel > 500 && current_event_data.rpm_accel != can_slider.rpm_accel) {
         current_event_data.rpm_accel = can_slider.rpm_accel;
         BoatEventLog_Write(Sudden_Acceleration, current_event_data.rpm_accel);
+        inputReg[ADR_INPUT_EVENT_SUDDEN_ACCELERATION] = current_event_data.rpm_accel;
     }
     if (current_event_data.motor_status != vcu_ctx.outputs.disable_motor) {
         current_event_data.motor_status = vcu_ctx.outputs.disable_motor;
         BoatEventLog_Write(Motor_Status, !current_event_data.motor_status);
+        inputReg[ADR_INPUT_EVENT_MOTOR_STATUS] = !current_event_data.motor_status;
     }
     if (current_event_data.gps_status != gpsData.state) {
         current_event_data.gps_status = gpsData.state;
         BoatEventLog_Write(ChStatus_GPS, current_event_data.gps_status);
+        inputReg[ADR_INPUT_EVENT_GPS_STATUS] = current_event_data.gps_status;
     }
-    if (current_event_data.vcu_state != vcu_ctx.current_state) {
-        current_event_data.vcu_state = vcu_ctx.current_state;
+    const uint32_t vcu_state_u32 = (uint32_t)VCU_StateGet();
+    if (current_event_data.vcu_state != vcu_state_u32) {
+        current_event_data.vcu_state = vcu_state_u32;
         BoatEventLog_Write(ChState_VCU, current_event_data.vcu_state);
+        inputReg[ADR_INPUT_EVENT_VCU_STATUS] = current_event_data.vcu_state;
     }
 }
 

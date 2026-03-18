@@ -35,6 +35,7 @@
  #define ADR_ROM_BATTERY_CONFIG 200          // size battery_config 32
  #define ADR_ROM_TIMERS_CONFIG 300           // size timers config 48
  #define ADR_ROM_NETWORK_CONFIG 400          // vị trí lưu cấu hình network
+#define ADR_ROM_DRIVER_FAULT_THRESHOLDS 450 // ngưỡng lỗi driver: temp(C) + volt(0.1V)
  #define ADR_EXROM_EVENT_LOG 1024
  
  #endif

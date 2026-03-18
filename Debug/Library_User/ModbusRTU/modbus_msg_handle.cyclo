@@ -1,0 +1,11 @@
+../Library_User/ModbusRTU/modbus_msg_handle.c:10:24:u16_clamp_u32	2
+../Library_User/ModbusRTU/modbus_msg_handle.c:15:24:u16_from_float_scale	3
+../Library_User/ModbusRTU/modbus_msg_handle.c:23:24:u16_from_s16	1
+../Library_User/ModbusRTU/modbus_msg_handle.c:28:24:u16_from_float_s16_scale	4
+../Library_User/ModbusRTU/modbus_msg_handle.c:36:13:Modbus_MapInputRegs	12
+../Library_User/ModbusRTU/modbus_msg_handle.c:110:13:Modbus_MapCoils	5
+../Library_User/ModbusRTU/modbus_msg_handle.c:160:13:SlaverSerial_MessageReadHoldingHandle	1
+../Library_User/ModbusRTU/modbus_msg_handle.c:167:13:SlaverSerial_MessageReadInputHandle	1
+../Library_User/ModbusRTU/modbus_msg_handle.c:172:13:SlaverSerial_MessagePresetMutilHandle	1
+../Library_User/ModbusRTU/modbus_msg_handle.c:179:6:SlaverSerial_MessageHandle	11
+../Library_User/ModbusRTU/modbus_msg_handle.c:228:6:SlaverSerial_Update	5

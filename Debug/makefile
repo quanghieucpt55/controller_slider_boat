@@ -9,16 +9,14 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include USB_DEVICE/Target/subdir.mk
--include USB_DEVICE/App/subdir.mk
--include Middlewares/ST/STM32_USB_Device_Library/Core/Src/subdir.mk
--include Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/subdir.mk
 -include Library_User/VCU_State/subdir.mk
 -include Library_User/Storage/subdir.mk
 -include Library_User/Network/Sim/subdir.mk
 -include Library_User/Network/Mqtt/subdir.mk
 -include Library_User/Network/subdir.mk
+-include Library_User/ModbusRTU/subdir.mk
 -include Library_User/Led_Error/subdir.mk
+-include Library_User/GNSS/subdir.mk
 -include Library_User/Display/Src/subdir.mk
 -include Library_User/Controller_Slider/Src/subdir.mk
 -include Library_User/Boat/Log/subdir.mk

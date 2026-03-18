@@ -2,10 +2,10 @@
 #include "clock.h"
 #include "swconfig.h"
 #include "bootloader.h"
-#include "usbd_cdc_if.h"
-#include "usb_device.h"
+//#include "usbd_cdc_if.h"
+//#include "usb_device.h"
 #include "system_update.h"
-extern USBD_HandleTypeDef hUsbDeviceFS;
+//extern USBD_HandleTypeDef hUsbDeviceFS;
 
 uint8_t isSytemUpdate=0;
 int32_t lastTimeSystemUpdate=0;

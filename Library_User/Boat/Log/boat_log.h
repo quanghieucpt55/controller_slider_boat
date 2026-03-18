@@ -1,6 +1,7 @@
 #ifndef _BOAT_LOG_H_
 #define _BOAT_LOG_H_
 
+#include <stdint.h>
 #include "cytypes.h"
 
 #define TOTAL_EVENT_BOAT_LOG 50
@@ -51,15 +52,17 @@ struct boat_package_event_log_t
     boat_event_log_t log;
 }CY_PACKED_ATTR;
 
-/* Cấu trúc gpsData với các trường: latitude (int32), longitude (int32), sog (uint16), cog (uint16), state (uint8) */
 typedef struct {
-    uint32_t latitude;
-    uint32_t longitude;
+    int32_t latitude;   // deg*1e7, signed (S/W âm)
+    int32_t longitude;  // deg*1e7, signed (S/W âm)
     uint16_t sog;
     uint16_t cog;
     uint8_t state;
 } gps_data_t;
 extern gps_data_t gpsData;
+
+/** Cập nhật gpsData từ GNSS */
+void BoatGPS_Task(void);
 
 cystatus BoatEventLog_ReadPacket(boat_package_event_log_t * buf,uint8_t pos);
 

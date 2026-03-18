@@ -1,0 +1,16 @@
+../Library_User/ModbusRTU/modbus_slave_base.c:32:9:ModbusSlaver_GetFuntion	1
+../Library_User/ModbusRTU/modbus_slave_base.c:37:10:ModbusSlaver_GetAddress	1
+../Library_User/ModbusRTU/modbus_slave_base.c:44:10:ModbusSlaver_GetData	1
+../Library_User/ModbusRTU/modbus_slave_base.c:51:9:ModbusSlaver_DecodeMsg	3
+../Library_User/ModbusRTU/modbus_slave_base.c:71:6:Slaver_Do	6
+../Library_User/ModbusRTU/modbus_slave_base.c:99:6:Slaver_PrepareRespond	8
+../Library_User/ModbusRTU/modbus_slave_base.c:140:6:ModbusSlaver_WriteSingleCoil	3
+../Library_User/ModbusRTU/modbus_slave_base.c:160:6:ModbusSlaver_WriteMultipleCoils	10
+../Library_User/ModbusRTU/modbus_slave_base.c:221:6:ModbusSlaver_PresetSingleRegister	2
+../Library_User/ModbusRTU/modbus_slave_base.c:232:6:ModbusSlaver_WriteMultiRegister	3
+../Library_User/ModbusRTU/modbus_slave_base.c:254:6:ModbusSlaver_ReadCoils	8
+../Library_User/ModbusRTU/modbus_slave_base.c:327:6:ModbusSlaver_ReadInpuState	8
+../Library_User/ModbusRTU/modbus_slave_base.c:396:6:ModbusSlaver_ReadHoldingReg	3
+../Library_User/ModbusRTU/modbus_slave_base.c:440:6:ModbusSlaver_ReadInputReg	3
+../Library_User/ModbusRTU/modbus_slave_base.c:481:10:ModbusSlaver_CalculateCRC	4
+../Library_User/ModbusRTU/modbus_slave_base.c:504:9:ModbusSlaver_CheckCRC	2

@@ -13,6 +13,13 @@
  #endif
 
  #include "main.h"
+ #include <stdint.h>
+
+ /* Timestamp nhận CAN từ BMS\ */
+ extern volatile uint32_t bms_jikong_last_rx_tick;
+
+/* Clear lỗi/cảnh báo nếu frame ALM/ERR không được gửi lại trong một thời gian */
+void BMS_Jikong_Service(void);
 
  /* ==============================================================
   *                  JIKONG BMS CAN DEFINITIONS
@@ -87,6 +94,7 @@ typedef struct {
     uint8_t temp_low;         // Nhiệt độ thấp
     uint8_t soc_low;          // Dung lượng còn lại thấp
     uint8_t comm_fault;       // Lỗi truyền thông nội bộ
+    uint32_t raw;              // Thông tin lỗi bên trong raw
 } BMS_AlmInfo_t;
 
  /* 6.5 BATT_ST2 - Dung lượng & chu kỳ (ID: 0x18F128F4) */
@@ -143,9 +151,9 @@ typedef struct {
     uint8_t acc;              // Trạng thái ACC: 1 = bật
 } BMS_SwSta_t;
 
-/* 7.0 CELLVOL - Điện áp từng cell (4 cell/frame, tối đa 25 cell) (ID: 0x18E028F4) */
+/* 7.0 CELLVOL - Điện áp từng cell (4 cell/frame, tối đa 30 cell) (ID: 0x18E028F4) */
 typedef struct {
-    uint16_t cell_mV[25];     // Điện áp từng cell (mV)
+    uint16_t cell_mV[30];     // Điện áp từng cell (mV)
     uint8_t cell_count;       // Số cell thực tế trong pack
 } BMS_CellVolArray_t;
 

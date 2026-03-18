@@ -28,7 +28,7 @@
 #define CYCLE_SEND netConfig.cycle_send_slow // gửi dữ liệu chậm khi thuyền không di chuyển
 #define CYCLE_SEND_FAST netConfig.cycle_send_fast // gửi dữ liệu nhanh khi thuyền chạy
 
-e_sim_work simCount=COUNT_SIM_PWON;
+uint8_t simCount=COUNT_SIM_PWON;
 e_sim_status simStatus; // trạng thái sim
 e_sim_messageType_t msgType;
 
@@ -115,8 +115,12 @@ void Sim_Work(void)
 		case COUNT_SIM_PWON:
 			result=Sim_PWOn();
 			break;
-        case COUNT_SIM_SELECT:
-            result=2;//Sim_SelectSim();
+        case COUNT_SIM_GPS:
+            #ifdef GNSS_UART_HANDLE
+                result=Sim_GPS();
+            #else
+                result = 2;
+            #endif
             break;
     	case COUNT_SIM_STARTUP:
         	result=Sim_StartUp(); // chọn nhà mạng
@@ -457,7 +461,7 @@ int Sim_PWOn(void)			// 0
 			PWRKEY_Off();//5v
 			if (WaitAnswer(" POWER DOWN"))
 				Stepto(0x02);
-			else if (Wait(5))
+			else if (Wait(10))
 				NextStep();
 			break;
 		case 0x05:					// Check that module correctly startup
@@ -503,6 +507,39 @@ int Sim_PWOn(void)			// 0
 			NextStep();
 	}
 	return 0;
+}
+
+int Sim_GPS(void)
+{
+    switch(simStep)
+    {
+        case 0x00:
+            GPRS_Ask("AT+QGPSCFG=\"outport\", \"uartdebug\"\r\n");
+            break;
+        case 0x01:
+            if(WaitAnswer("OK"))
+            NextStep();
+            else if (Wait(1)) 
+            return -1;
+        case 0x02:
+            GPRS_Ask("AT+QGPSCFG=\"gpsnmeatype\", 2\r\n");
+            break;
+        case 0x03:
+            if (WaitAnswer("OK"))
+                NextStep();
+            else if (Wait(1)) 
+                return -1;
+            break;
+        case 0x04:
+            GPRS_Ask("AT+QGPS=1\r\n");
+            break;
+        case 0x05:
+            if(WaitAnswer("OK"))
+                return 2;
+            else if (Wait(2)) 
+                return -1;
+            break;
+    }
 }
 
 int Sim_SelectSim(void)// 1
@@ -601,28 +638,31 @@ int Sim_StartUp(void)			// 2
             }
 			break;
 		case 0x04:												// Check NetworkMqtt SIM_PROVIDER
-			GPRS_Ask("AT+COPS?\r\n");							// Test connection
+			GPRS_Ask("AT+CGREG?\r\n");							// Test connection
             simStatus=Sim_CheckSignal_Status_1;
 			break;
 		case 0x05:
-			if (WaitAnswer("+COPS: 0,"))
 			{
-                if(Wait(2)) {
+                uint8_t pos = WaitAnswer("+CGREG:");
+                if(pos > 0 && (buffer_recv_gprs[pos+3] == '1' || buffer_recv_gprs[pos+3] == '5'))
+                {
                     simErrorRetry=0;
                     NextStep();
-                }	    
-			}
-			else if (Wait(5))//2							// Module don't buffer_recv_gprs or No SIM
-			{
-                											// WaitAnswer("+COPS: 0")
-                if (++simErrorRetry>=4)
-                {
-                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                    return 0;
-                } else {
-                    return -1;
                 }
-			}
+                else if (Wait(3))//2							// Module don't buffer_recv_gprs or No SIM
+                {
+                    simErrorRetry++;
+                    if(simErrorRetry>=10)
+                    {
+                        Sim1_CountToStepTo(COUNT_SIM_PWON,2);
+                        return 0;
+                    }
+                    else
+                    {
+                        return -1;
+                    }
+                }
+            }
 			break;
         case 0x06:
             GPRS_Ask("AT+CSQ\r\n");
@@ -670,20 +710,13 @@ int Sim_SetUp(void)
 	{
         case 0:
             GPRS_Ask("AT+CGATT=1\r\n");
-            simErrorRetry=0;
             NextStep();
         break;
         case 1:
             if(WaitAnswer("OK"))
 				NextStep();
-			else if(Wait(2)) {
-                if (++simErrorRetry>=10)
-                {
-                    Sim1_CountToStepTo(COUNT_SIM_PWON,2);
-                } else {
-                    return -2;
-                }
-            }
+			else if(Wait(2)) 
+                return -2;
             break;
 		case 2:
             GPRS_Ask("AT+CGATT?\r\n");
@@ -776,7 +809,7 @@ int Sim_SetUp(void)
 //		        if (Wait(3))
 //					return -1;
 //            break;
-        case 12:
+        case 8:
             return 2;
             break;
 		default:
@@ -893,7 +926,7 @@ int Sim_Disconnect(void)
             }
             break;
         case 7:
-                Sim1_CountToStepTo(COUNT_SIM_SETUP,0);
+                Sim1_CountToStepTo(COUNT_SIM_PWON,5);
                 return 1;
             break;
 		default:
@@ -1045,8 +1078,9 @@ int Sim_MqttComunication(void)
             }
             break;
         case 3:
-            if(Sim_CheckMsgMqtt(LWMQTT_PUBACK_PACKET)==CYRET_SUCCESS)
+            if(SIM_HaveAck)
             {
+                SIM_HaveAck = 0;
                 return -1;
             }
             else if(Wait(3))

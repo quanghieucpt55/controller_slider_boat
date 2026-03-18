@@ -65,6 +65,7 @@ typedef struct {
 	float battery_voltage;
 	float dc_current;
 	uint8_t control_mode; // 0: Accelerator, 1: Can protocol
+	uint8_t thr_Val;
 } Can_Slider_2_t;
 
 /* Gói tin Can Slider */
@@ -83,29 +84,29 @@ extern Can_Slider_t can_slider;
 typedef enum {
 	/*Nếu báo động vẫn còn sau khi động cơ đã được tháo ra, hãy trả lại nhà máy để sửa chữa. 
 	Nếu không, hãy thay thế động cơ.*/
-	OVER_CURRENT = 3,
+	OVER_CURRENT = 3, //Quá dòng
 	/*Vui lòng kiểm tra xem quạt có hoạt động bình thường không và thông gió có thông suốt không.*/
-	CONTROLLER_TEMP_HIGH = 4,
+	CONTROLLER_TEMP_HIGH = 4,  //Nhiệt độ bộ điều khiển cao
 	/*Bộ mã hóa động cơ đã kích hoạt báo động.
 	Động cơ hoặc mạch mã hóa của bộ điều khiển bị hở, hoặc bộ mã hóa động cơ bị hỏng.*/
-	MOTOR_ENCODER_ERROR = 7,
+	MOTOR_ENCODER_ERROR = 7, //Lỗi bộ mã hóa động cơ
 	/*Đường truyền thông CAN bất thường.
 	Vui lòng kiểm tra xem kết nối của đường truyền thông CAN có chính xác không và
 	các tin nhắn điều khiển do VCU gửi đi có chính xác không.*/
-	COMMUNICATION_ERROR = 8,
+	COMMUNICATION_ERROR = 8, //Lỗi truyền thông CAN
 	/*Pin yếu, cần sạc ngay*/
-	UNDER_VOLTAGE_BATTERY = 9,
+	UNDER_VOLTAGE_BATTERY = 9, //Điện áp quá thấp
 	/*1. Vui lòng kiểm tra xem bộ pin có bình thường không;
 	2. Vui lòng cố gắng giảm chức năng
 	phanh tái tạo càng nhiều càng tốt.*/
-	OVER_VOLTAGE_BATTERY = 10,
+	OVER_VOLTAGE_BATTERY = 10, //Điện áp quá cao
 	/*Đóng động cơ để nguội hoặc
 	Tăng chế độ làm mát động cơ.*/
-	MOTOR_TEMP_HIGH = 11,
+	MOTOR_TEMP_HIGH = 11, //Nhiệt độ động cơ cao
 	/*Báo lỗi nhiệt độ động cơ (mạch dây cảm biến nhiệt độ động cơ bị đứt hoặc bị chạm chập).*/
-	MOTOR_TEMP_SENSOR_ERROR = 12,
+	MOTOR_TEMP_SENSOR_ERROR = 12, //Lỗi cảm biến nhiệt độ động cơ
 	/*Vui lòng kiểm tra xem kết nối chân ga có chính xác không; nếu bị hỏng, cần phải mang đi sửa chữa.*/
-	ACCELERATOR_FAULT = 13
+	ACCELERATOR_FAULT = 13 //Lỗi chân ga
 } Can_Slider_Error_Code_t;
 
 /* API Functions */

@@ -22,7 +22,7 @@ typedef enum e_sim_work e_sim_work;
 enum e_sim_work
 {
     COUNT_SIM_PWON=0,
-    COUNT_SIM_SELECT=1,
+    COUNT_SIM_GPS=1,
     COUNT_SIM_STARTUP=2,
     COUNT_SIM_SETUP=3,
     COUNT_SIM_CONNECT=4,

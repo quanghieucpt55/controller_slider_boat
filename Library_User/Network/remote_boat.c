@@ -122,10 +122,14 @@ ERR_BOAT_REMOTE_CMD RemoteBoat_ExcuteCommand(uint8_t * frame,uint8_t len_frame)
                    break;
                case RM_BOAT_UPDATE_REALTIME:
                {
-                   if(System_UpdateRTC(ptr_data,len_data)!=CYRET_SUCCESS)
-                   {
+                    RP_BOAT_RESPONSE_CMD frame_response = RP_BOAT_SUCCESS;
+                    if(System_UpdateRTC(ptr_data,len_data)!=CYRET_SUCCESS)
+                    {
                        errCode=ERR_BOAT_RM_UPDATE_REALTIME;
-                   }
+                       frame_response = RP_BOAT_FAIL;
+                       
+                    } 
+                   WriteBoat_Response_Remote(cmd, (uint8_t *)&frame_response, sizeof(frame_response));
                    break;
                }
                case RM_BOAT_READ_NETWORK_CONFIG:
@@ -165,6 +169,8 @@ ERR_BOAT_REMOTE_CMD RemoteBoat_ExcuteCommand(uint8_t * frame,uint8_t len_frame)
             		   motor_status = ENABLE_MOTOR;
             	   }
                    VCU_StateSetMotorStatus(!motor_status);
+                   RP_BOAT_RESPONSE_CMD frame_response = RP_BOAT_SUCCESS;
+                   WriteBoat_Response_Remote(cmd, (uint8_t *)&frame_response, sizeof(frame_response));
                    break;
                }
                case RM_BOAT_CONTROL_FAN:

@@ -39,6 +39,12 @@ typedef enum
     ERR_BOAT_RM_FRAME_WRITE_TOO_SHORT,
 } ERR_BOAT_REMOTE_CMD;
 
+typedef enum 
+{
+    RP_BOAT_SUCCESS = 0x01,
+    RP_BOAT_FAIL = 0x00
+} RP_BOAT_RESPONSE_CMD;
+
 extern uint8_t boat_buf_response_remote[];
 extern uint32_t boat_len_bufResponseRemote;
 

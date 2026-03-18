@@ -1,4 +1,5 @@
-../Library_User/BMS_Jihong/jikong_can.c:29:6:BMS_Jikong_Init	56	static
-../Library_User/BMS_Jihong/jikong_can.c:46:6:HAL_CAN_RxFifo1MsgPendingCallback	56	static
-../Library_User/BMS_Jihong/jikong_can.c:55:6:BMS_Jikong_Process	56	static
-../Library_User/BMS_Jihong/jikong_can.c:269:6:BMS_Jikong_RequestControl	56	static
+../Library_User/BMS_Jihong/jikong_can.c:31:6:BMS_Jikong_Service	16	static
+../Library_User/BMS_Jihong/jikong_can.c:68:6:BMS_Jikong_Init	56	static
+../Library_User/BMS_Jihong/jikong_can.c:85:6:HAL_CAN_RxFifo1MsgPendingCallback	56	static
+../Library_User/BMS_Jihong/jikong_can.c:95:6:BMS_Jikong_Process	56	static
+../Library_User/BMS_Jihong/jikong_can.c:334:6:BMS_Jikong_RequestControl	56	static

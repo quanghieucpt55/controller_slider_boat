@@ -6,6 +6,7 @@
  */
 
 #include "Can_Slider.h"
+#include <string.h>
 
 #define GET_U16_LE(p)  ((uint16_t)((p)[1] | ((p)[0] << 8)))
 
@@ -34,6 +35,19 @@ void Can_Slider_Init(CAN_HandleTypeDef *hcan) {
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 	if (HAL_CAN_GetRxFifoFillLevel(hcan, CAN_RX_FIFO0) > 0) {
+		const bool ksi_on =
+				(HAL_GPIO_ReadPin(KSI_GPIO_Port, KSI_Pin) == GPIO_PIN_SET) ? false : true;
+		if (!ksi_on) {
+			/* KSI OFF: xả sạch FIFO để không xử lý lại frame cũ khi bật lại */
+			while (HAL_CAN_GetRxFifoFillLevel(hcan, CAN_RX_FIFO0) > 0) {
+				CAN_RxHeaderTypeDef hdr_drop;
+				uint8_t d_drop[8];
+				(void)HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &hdr_drop, d_drop);
+			}
+			memset(&can_slider, 0, sizeof(can_slider));
+			return;
+		}
+
 		CAN_RxHeaderTypeDef hdr;
 		uint8_t d[8];
 		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &hdr, d);
@@ -95,9 +109,9 @@ Can_Slider_Error_Code_t Can_Slider_1_Process(Can_Slider_1_t *slider_1, CAN_RxHea
 	case COMMUNICATION_ERROR:
 		slider_1->error_code = 0x0008;
 		break;
-	case UNDER_VOLTAGE_BATTERY:
-		slider_1->error_code = 0x0010;
-		break;
+	 case UNDER_VOLTAGE_BATTERY:
+	 	slider_1->error_code = 0x0010;
+	 	break;
 	case OVER_VOLTAGE_BATTERY:
 		slider_1->error_code = 0x0020;
 		break;
@@ -121,6 +135,7 @@ void Can_Slider_2_Process(Can_Slider_2_t *slider_2, CAN_RxHeaderTypeDef *hdr, ui
 	slider_2->battery_voltage = (float)GET_U16_LE(&d[0])*0.1;
 	slider_2->dc_current = (float)GET_U16_LE(&d[2])*0.1;
 	slider_2->control_mode = d[4];
+	slider_2->thr_Val = d[5];
 }
 
 void Can_Vcu_Send_Slider(CAN_HandleTypeDef *hcan) {
