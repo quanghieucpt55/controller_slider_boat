@@ -15,6 +15,13 @@
 #define HEADER_FRAME 0xF3
 #define HEADER_EVENT 0xF1
 
+/*
+ * GPS giả lập để test bản đồ web:
+ */
+#ifndef BOAT_GPS_TEST_RAMP
+#define BOAT_GPS_TEST_RAMP 1
+#endif
+
 /* 3 hàm build payload chính cho driver, sim/gps, bms*/
 static uint8_t *build_driver_data(uint8_t **p, uint8_t *end);
 static uint8_t *build_sim_gps_data(uint8_t **p, uint8_t *end);
@@ -124,13 +131,35 @@ static uint8_t *build_sim_gps_data(uint8_t **p, uint8_t *end)
 {
     /* Chất lượng sóng SIM (%) */
     uint8_t sim_signal = Sim_SignalQuanlityPercent();
+
     if (WriteChar_Buffer(p, sim_signal, end) != CYRET_SUCCESS) return NULL;
 
+    int32_t lat_out = gpsData.latitude;
+    int32_t lon_out = gpsData.longitude;
+
+#if (BOAT_GPS_TEST_RAMP)
+    static int32_t sim_lat = 0;
+    static int32_t sim_lon = 0;
+    static uint8_t sim_inited = 0;
+    const int32_t step = 5000; /* 5000 / 1e7 = 0.0005 độ */
+
+    if (!sim_inited) {
+        sim_lat = gpsData.latitude;
+        sim_lon = gpsData.longitude;
+        sim_inited = 1;
+    }
+
+    sim_lat += step;
+    sim_lon += step;
+    lat_out = sim_lat;
+    lon_out = sim_lon;
+#endif
+
     /* Vĩ độ (x10^7, int32) */
-    if (WriteInt32_Buffer(p, (uint32_t)gpsData.latitude, end) != CYRET_SUCCESS) return NULL;
+    if (WriteInt32_Buffer(p, (uint32_t)lat_out, end) != CYRET_SUCCESS) return NULL;
     
     /* Kinh độ (x10^7, int32) */
-    if (WriteInt32_Buffer(p, (uint32_t)gpsData.longitude, end) != CYRET_SUCCESS) return NULL;
+    if (WriteInt32_Buffer(p, (uint32_t)lon_out, end) != CYRET_SUCCESS) return NULL;
     
     /* Tốc độ (x10^2 km/h, u16) */
     if (WriteInt16_Buffer(p, gpsData.sog, end) != CYRET_SUCCESS) return NULL;

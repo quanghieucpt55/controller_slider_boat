@@ -49,6 +49,7 @@ typedef struct {
 	bool system_fault;            // Lỗi hệ thống
 	bool disable_motor_request; // Ngắt động cơ
 	bool contactor_request;       // Yêu cầu bật contactor (true = ON, false = OFF)
+	bool KSI;					// Bật tắt chìa khóa (true = ON, false = OFF)
 } vcu_state_inputs_t;
 
 typedef struct {
@@ -57,10 +58,18 @@ typedef struct {
 } vcu_state_outputs_t;
 
 typedef struct {
-	vcu_state_t current_state;         // Trạng thái hiện tại
     vcu_state_inputs_t inputs;         // các tín hiệu vào
 	vcu_state_outputs_t outputs;      // Lệnh xuất ra relay/driver
-	uint32_t last_transition_tick;    // Mốc thời gian chuyển trạng thái gần nhất
+	uint32_t last_ksi_tick;    // Mốc thời gian bật chìa khóa
+	bool last_KSI;					// Trạng thái chìa khóa gần nhất
+	bool accel_safety_interlock_active; // KSI ON khi đang đạp ga -> yêu cầu nhả ga rồi đạp lại
+	bool accel_press_since_ksi_on; // Đã nhấn ga ít nhất 1 lần kể từ khi KSI ON
+	uint32_t last_accel_release_tick; // Mốc thời gian nhả ga gần nhất
+	bool slider_critical_error; // Lỗi slider
+	bool bms_critical_error; // Lỗi BMS
+	bool accel_init;
+	bool accel_charge;
+	bool accel_error;
 } vcu_state_context_t;
 extern vcu_state_context_t vcu_ctx;
 
@@ -96,6 +105,7 @@ typedef enum {
     MENU_DETAIL_BMS_CELLVOL_2 = 0x1000,  // Bit 12: Hiển thị điện áp cell 9-16
     MENU_DETAIL_BMS_CHG_INFO = 0x2000,   // Bit 13: Hiển thị thông tin yêu cầu sạc
 	MENU_DETAIL_NETWORK = 0x4000,       // Bit 14: Hiển thị trạng thái mạng
+	MENU_DETAIL_MODBUS = 0x8000,        // Bit 15: Hiển thị trạng thái Modbus RS485
 } menu_detail_t;
 
 typedef menu_detail_t menu_state_t;

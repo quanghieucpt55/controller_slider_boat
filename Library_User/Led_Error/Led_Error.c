@@ -28,8 +28,8 @@ static uint8_t collect_errors(uint8_t *error_list) {
 	if (bms.almInfo.comm_fault > 0) error_list[count++] = 9;
 	
 	// Thu thập lỗi Slider (mã 10-18)
-	if (can_slider.slider_1.error_code > 0) {
-	  uint8_t slider_error = can_slider.slider_1.error_code;
+	if (can_slider.effective_raw_err_code > 0) {
+	  uint8_t slider_error = can_slider.effective_raw_err_code;
 	  uint8_t mapped_error = 0;
   
 	  switch (slider_error) {

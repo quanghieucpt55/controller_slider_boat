@@ -9,8 +9,11 @@
 #include "jikong_can.h"
 #include "VCU_State.h"
 #include "main.h"
+#include "modbus_slave_base.h"
+#include "modbus_slave_define.h"
+#include "gps_rmc.h"
 
-gps_data_t gpsData = {.latitude = 21.019627694455533*10000000, .longitude = 105.79244619716383*10000000, .sog = 1456, .cog = 180, .state = 3};  
+gps_data_t gpsData = {0};
 
 #define SIZE_PACKED_EVENT_LOG (sizeof(boat_package_event_log_t)+2)
 #define MAX_ADR_EVENT_LOG (SIZE_PACKED_EVENT_LOG*TOTAL_EVENT_BOAT_LOG+ADR_EXROM_EVENT_LOG)
@@ -25,12 +28,8 @@ uint16_t countRomEventLog = 0; // Số lượng item còn lại trong ROM
 
 void BoatEventLog_Init(void)
 {
-    // Khởi tạo queue và kiểm tra kết quả
     q_init(&queueEventLog,sizeof(boat_event_log_t),SIZE_QUEUE,FIFO,1);
-    q_init(&queueRomAddress,sizeof(uint16_t),SIZE_QUEUE,FIFO,1); // Queue lưu địa chỉ ROM
-    
-    countRomEventLog = 0; // Khởi tạo biến đếm
-    // tìm địa chỉ rom hiện tại và đếm số item hợp lệ trong ROM
+    // tìm địa chỉ rom hiện tại
     uint16_t currentAdr=ADR_EVENT_LOG_BASE;
     for(uint8_t i=0;i<TOTAL_EVENT_BOAT_LOG;i++)
     {
@@ -42,17 +41,17 @@ void BoatEventLog_Init(void)
                 id_rom_event_log=item.id;
                 adrCurrentRom_EventLog=currentAdr;
             }
-            // Đếm số item hợp lệ (id > 0)
-            if(item.id > 0)
+            else
             {
-                countRomEventLog++;
+
             }
+        }
+        else
+        {
+
         }
         currentAdr+=SIZE_PACKED_EVENT_LOG;// cộng 2 do cuối mỗi dữ liệu có thêm byte cs
     }
-    
-    // Load các item còn lại trong ROM vào queue khi khởi động
-    BoatEventLog_LoadFromRomToQueue();
 }
 
 uint32_t BoatEventLog_GetCurrentPos(void)
@@ -64,58 +63,49 @@ void BoatEventLog_Write(e_event_log_t event,uint32_t event_data)
 {
     if(!ValidTime(&currentTime))
     {
-        //đọc thời gian có lỗi thì thoát luôn
-        return;
+    //đọc thời gian có lỗi thì thoát luôn
+    return;
     }
     id_rom_event_log++;
-    // Xử lý overflow: nếu id đạt 0xFFFFFFFF, reset về 1
-    if(id_rom_event_log == 0)
-    {
-        id_rom_event_log = 1;
-    }
     // khởi tạo dữ liệu
     boat_package_event_log_t item;
-    item.id=id_rom_event_log;
     memcpy(item.log.date_time,&currentTime,6);
     item.log.event=event;
     item.log.event_data=event_data;
-    
-    // Ưu tiên lưu vào queue trước
-    // Kiểm tra queue đầy trước khi push
-    if(!q_isFull(&queueEventLog))
-    {
-        q_push(&queueEventLog,&item.log);
-        /* Push vào queue thành công, không cần lưu vào ROM
-        Item này không có trong ROM nên không cần lưu địa chỉ ROM
-        Push một giá trị đặc biệt (0xFFFF) để đánh dấu item này không có trong ROM */
-        uint16_t noRomAddress = 0xFFFF;
-        q_push(&queueRomAddress, &noRomAddress);
-        return;
-    }
-    
-    // Queue đầy, lưu vào ExROM
     // tịnh tiến địa chỉ
     adrCurrentRom_EventLog+=SIZE_PACKED_EVENT_LOG;
     if(adrCurrentRom_EventLog>=MAX_ADR_EVENT_LOG)// quá đia chỉ ->
     {
-        adrCurrentRom_EventLog=ADR_EVENT_LOG_BASE;
+    adrCurrentRom_EventLog=ADR_EVENT_LOG_BASE;
     }
-    // Kiểm tra xem địa chỉ này có item hợp lệ không (để tránh tăng count khi ghi đè)
-    boat_package_event_log_t old_item;
-    uint8_t had_valid_item = 0;
-    if(ExRom_ReadParam_WithCRC16(adrCurrentRom_EventLog, (uint8_t *)&old_item, sizeof(old_item)))
-    {
-        if(old_item.id > 0)
-        {
-            had_valid_item = 1; // Địa chỉ này đã có item hợp lệ
-        }
-    }
+    q_push(&queueEventLog,&item.log);
     ExRom_SaveParam_WithCRC16(adrCurrentRom_EventLog,(uint8_t *)&item,sizeof(item));
-    // Tăng count nếu ghi vào vị trí trống hoặc ghi đè item đã xóa
-    if(!had_valid_item)
-    {
-        countRomEventLog++;
-    }
+}
+
+void BoatGPS_Task(void)
+{
+    gnss_data_t fix;
+    if (!gps_rmc_pop(&fix)) return;
+
+    int32_t lat = (int32_t)fix.latitude;
+    int32_t lon = (int32_t)fix.longitude;
+    if (fix.northSouth == 'S') lat = -lat;
+    if (fix.eastWest  == 'W') lon = -lon;
+
+    gpsData.latitude  = lat;
+    gpsData.longitude = lon;
+
+    // Boat payload:
+    // - sog: km/h * 100 (u16)
+    // - cog: deg  * 100 (u16)
+    uint32_t sog_x100 = fix.speed; // fix.speed = km/h*100
+    uint32_t cog_x100 = fix.cog;   // fix.cog   = deg*100
+    if (sog_x100 > 0xFFFFu) sog_x100 = 0xFFFFu;
+    if (cog_x100 > 0xFFFFu) cog_x100 = 0xFFFFu;
+    gpsData.sog = (uint16_t)sog_x100;
+    gpsData.cog = (uint16_t)cog_x100;
+
+    gpsData.state = fix.state;
 }
 
 // kiểm tra dữ liệu bộ nhớ queue
@@ -161,21 +151,7 @@ uint8_t BoatEventLog_Dequeue(uint8_t * buf)
     // check queue not empty
     if(q_getCount(&queueEventLog)>0)
     {
-        if (q_pop(&queueEventLog,buf))
-        {
-            // Lấy địa chỉ ROM tương ứng và xóa item đó khỏi ROM
-            uint16_t romAdr;
-            if(q_pop(&queueRomAddress, &romAdr))
-            {
-                // Chỉ xóa khỏi ROM nếu item này có trong ROM (romAdr != 0xFFFF)
-                if(romAdr != 0xFFFF)
-                {
-                    // Xóa item khỏi ROM sau khi đã lấy ra khỏi queue
-                    BoatEventLog_DeleteFromRom(romAdr);
-                }
-            }
-        }
-        
+        q_pop(&queueEventLog,buf);
         return sizeof(boat_event_log_t);
     }
     return 0;
@@ -263,34 +239,41 @@ void BoatEventUpdate(void)
     if (current_event_data.pow_status != vcu_ctx.outputs.contactor_on) {
         current_event_data.pow_status = vcu_ctx.outputs.contactor_on;
         BoatEventLog_Write(Pow_Status_Driver, current_event_data.pow_status);
+        inputReg[ADR_INPUT_EVENT_POWER_STATUS] = current_event_data.pow_status;
     }
     if (current_event_data.err_bms != bms.bmsErrInfo.raw) {
         current_event_data.err_bms = bms.bmsErrInfo.raw;
         BoatEventLog_Write(Error_BMS, current_event_data.err_bms);
     }
-    if (current_event_data.err_driver != can_slider.slider_1.error_code) {
-        current_event_data.err_driver = can_slider.slider_1.error_code;
+    if (current_event_data.err_driver != can_slider.effective_error_code) {
+        current_event_data.err_driver = can_slider.effective_error_code;
         BoatEventLog_Write(Error_Driver, current_event_data.err_driver);
     }
     if (current_event_data.motor_direc != can_slider.motor_direc) {
         current_event_data.motor_direc = can_slider.motor_direc;
         BoatEventLog_Write(ChDirection_Motor, current_event_data.motor_direc);
+        inputReg[ADR_INPUT_EVENT_GEAR_STATUS] = current_event_data.motor_direc;
     } 
     if (can_slider.rpm_accel > 500 && current_event_data.rpm_accel != can_slider.rpm_accel) {
         current_event_data.rpm_accel = can_slider.rpm_accel;
         BoatEventLog_Write(Sudden_Acceleration, current_event_data.rpm_accel);
+        inputReg[ADR_INPUT_EVENT_SUDDEN_ACCELERATION] = current_event_data.rpm_accel;
     }
     if (current_event_data.motor_status != vcu_ctx.outputs.disable_motor) {
         current_event_data.motor_status = vcu_ctx.outputs.disable_motor;
         BoatEventLog_Write(Motor_Status, !current_event_data.motor_status);
+        inputReg[ADR_INPUT_EVENT_MOTOR_STATUS] = !current_event_data.motor_status;
     }
     if (current_event_data.gps_status != gpsData.state) {
         current_event_data.gps_status = gpsData.state;
         BoatEventLog_Write(ChStatus_GPS, current_event_data.gps_status);
+        inputReg[ADR_INPUT_EVENT_GPS_STATUS] = current_event_data.gps_status;
     }
-    if (current_event_data.vcu_state != vcu_ctx.current_state) {
-        current_event_data.vcu_state = vcu_ctx.current_state;
+    const uint32_t vcu_state_u32 = (uint32_t)VCU_StateGet();
+    if (current_event_data.vcu_state != vcu_state_u32) {
+        current_event_data.vcu_state = vcu_state_u32;
         BoatEventLog_Write(ChState_VCU, current_event_data.vcu_state);
+        inputReg[ADR_INPUT_EVENT_VCU_STATUS] = current_event_data.vcu_state;
     }
 }
 

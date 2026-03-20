@@ -23,9 +23,10 @@ typedef enum
     RM_BOAT_READ_GPS_STATUS, // Đọc trạng thái GPS
     RM_BOAT_READ_SIGNAL_SIM,
 
-    // SAFETY
-    RM_BOAT_DISABLE_MOTOR,
-    RM_BOAT_ENABLE_MOTOR,
+    // CONTROL
+    RM_BOAT_CONTROL_MOTOR,
+    RM_BOAT_CONTROL_FAN,
+	RM_BOAT_CONTROL_AC
 
 } TYPE_GEN_REMOTE_CMD;
 
@@ -37,6 +38,12 @@ typedef enum
     ERR_BOAT_RM_UPDATE_NETWORK_CONFIG, // Lỗi cài đặt cấu hình mạng
     ERR_BOAT_RM_FRAME_WRITE_TOO_SHORT,
 } ERR_BOAT_REMOTE_CMD;
+
+typedef enum 
+{
+    RP_BOAT_SUCCESS = 0x01,
+    RP_BOAT_FAIL = 0x00
+} RP_BOAT_RESPONSE_CMD;
 
 extern uint8_t boat_buf_response_remote[];
 extern uint32_t boat_len_bufResponseRemote;

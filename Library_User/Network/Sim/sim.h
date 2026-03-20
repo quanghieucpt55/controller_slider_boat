@@ -7,7 +7,8 @@ enum e_sim_status
 {
     Sim_StartUp_Status=0,
     Sim_NoSim_Status,
-    Sim_CheckSignal_Status,
+    Sim_CheckSignal_Status_1,
+	Sim_CheckSignal_Status_2,
     Sim_CheckNetwork_Status,
     Sim_Connecting_Status,
     Sim_Connected_Status,
@@ -21,7 +22,7 @@ typedef enum e_sim_work e_sim_work;
 enum e_sim_work
 {
     COUNT_SIM_PWON=0,
-    COUNT_SIM_SELECT=1,
+    COUNT_SIM_GPS=1,
     COUNT_SIM_STARTUP=2,
     COUNT_SIM_SETUP=3,
     COUNT_SIM_CONNECT=4,

@@ -1,0 +1,6 @@
+../Library_User/DriverFaultConfig/driver_fault_config.c:15:13:DriverFaultConfig_LoadDefaults	16	static
+../Library_User/DriverFaultConfig/driver_fault_config.c:27:6:DriverFaultConfig_Init	16	static
+../Library_User/DriverFaultConfig/driver_fault_config.c:70:34:DriverFaultConfig_Get	4	static
+../Library_User/DriverFaultConfig/driver_fault_config.c:75:6:DriverFaultConfig_Validate	16	static
+../Library_User/DriverFaultConfig/driver_fault_config.c:117:6:DriverFaultConfig_Set	24	static
+../Library_User/DriverFaultConfig/driver_fault_config.c:127:6:DriverFaultConfig_Save	24	static

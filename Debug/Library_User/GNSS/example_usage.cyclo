@@ -1,0 +1,3 @@
+../Library_User/GNSS/example_usage.c:4:6:GPS_Init	1
+../Library_User/GNSS/example_usage.c:10:6:GPS_OnUartByte	1
+../Library_User/GNSS/example_usage.c:16:6:GPS_Task	1

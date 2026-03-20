@@ -31,14 +31,13 @@ Library_User/Boat/Frame \
 Library_User/Boat/Log \
 Library_User/Controller_Slider/Src \
 Library_User/Display/Src \
+Library_User/DriverFaultConfig \
+Library_User/GNSS \
 Library_User/Led_Error \
+Library_User/ModbusRTU \
 Library_User/Network/Mqtt \
 Library_User/Network/Sim \
 Library_User/Network \
 Library_User/Storage \
 Library_User/VCU_State \
-Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src \
-Middlewares/ST/STM32_USB_Device_Library/Core/Src \
-USB_DEVICE/App \
-USB_DEVICE/Target \
 

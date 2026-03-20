@@ -1,0 +1,5 @@
+../Library_User/GNSS/gnss_uart_dma.c:15:21:GNSS_UART_DMA_GetHandle	1
+../Library_User/GNSS/gnss_uart_dma.c:20:13:gnss_uart_dma_consume_new_bytes	8
+../Library_User/GNSS/gnss_uart_dma.c:49:19:GNSS_UART_DMA_Start	6
+../Library_User/GNSS/gnss_uart_dma.c:80:19:GNSS_UART_DMA_Stop	2
+../Library_User/GNSS/gnss_uart_dma.c:91:6:GNSS_UART_DMA_Task	1

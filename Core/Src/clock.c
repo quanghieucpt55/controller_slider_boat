@@ -88,6 +88,7 @@ void ClockTimerIsr_Run(void)
     {
         TimeCallBackHandle();
     }
+	ModbusComp_checkIfEndOfMessage();
     ClockTimer();
     MiliSec_Run();
 }

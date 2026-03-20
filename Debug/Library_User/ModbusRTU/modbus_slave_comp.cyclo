@@ -1,0 +1,7 @@
+../Library_User/ModbusRTU/modbus_slave_comp.c:31:17:ModbusSlaveComp_GetStatus	1
+../Library_User/ModbusRTU/modbus_slave_comp.c:37:6:PacketComp_Init	1
+../Library_User/ModbusRTU/modbus_slave_comp.c:48:6:ModbusSlaveComp_Init	1
+../Library_User/ModbusRTU/modbus_slave_comp.c:54:6:ModbusSlaveComp_DecodeMessage	5
+../Library_User/ModbusRTU/modbus_slave_comp.c:77:6:ModbusComp_checkIfEndOfMessage	4
+../Library_User/ModbusRTU/modbus_slave_comp.c:99:6:ModbusSlaverComp_SendData	1
+../Library_User/ModbusRTU/modbus_slave_comp.c:104:6:ModbusSlaveComp_Run	5

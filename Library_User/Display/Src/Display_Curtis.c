@@ -63,18 +63,19 @@ static menu_detail_t find_next_allowed_detail_menu(menu_detail_t start_menu)
 {
 	menu_mask_t allowed_mask = VCU_GetAllowedDetailMenuMask();
 	
-	// Duyệt qua tất cả các menu chi tiết (15 menu)
+	// Duyệt qua tất cả các menu chi tiết (16 menu)
 	menu_detail_t menu_list[] = {
 		MENU_DETAIL_CAN_INFO_1, MENU_DETAIL_CAN_INFO_2, MENU_DETAIL_THROTTLE_CONTROL,
 		MENU_DETAIL_BMS_INFO, MENU_DETAIL_ALM_BMS, MENU_DETAIL_IO_INFO,
 		MENU_DETAIL_BMS_BATT_ST2, MENU_DETAIL_BMS_ALL_TEMP, MENU_DETAIL_BMS_ERR_INFO,
 		MENU_DETAIL_BMS_INFO_SYS, MENU_DETAIL_BMS_SW_STA, MENU_DETAIL_BMS_CELLVOL,
-		MENU_DETAIL_BMS_CELLVOL_2, MENU_DETAIL_BMS_CHG_INFO, MENU_DETAIL_NETWORK
+		MENU_DETAIL_BMS_CELLVOL_2, MENU_DETAIL_BMS_CHG_INFO, MENU_DETAIL_NETWORK,
+		MENU_DETAIL_MODBUS
 	};
 	
 	// Tìm vị trí menu hiện tại
 	int start_idx = -1;
-	for (int i = 0; i < 15; i++) {
+	for (int i = 0; i < 16; i++) {
 		if (menu_list[i] == start_menu) {
 			start_idx = i;
 			break;
@@ -86,8 +87,8 @@ static menu_detail_t find_next_allowed_detail_menu(menu_detail_t start_menu)
 	}
 	
 	// Tìm menu hợp lệ tiếp theo
-	for (int i = 1; i < 15; i++) {
-		int idx = (start_idx + i) % 15;
+	for (int i = 1; i < 16; i++) {
+		int idx = (start_idx + i) % 16;
 		if (allowed_mask & menu_list[idx]) {
 			return menu_list[idx];
 		}
@@ -101,18 +102,19 @@ static menu_detail_t find_prev_allowed_detail_menu(menu_detail_t start_menu)
 {
 	menu_mask_t allowed_mask = VCU_GetAllowedDetailMenuMask();
 	
-	// Duyệt qua tất cả các menu chi tiết (15 menu)
+	// Duyệt qua tất cả các menu chi tiết (16 menu)
 	menu_detail_t menu_list[] = {
 		MENU_DETAIL_CAN_INFO_1, MENU_DETAIL_CAN_INFO_2, MENU_DETAIL_THROTTLE_CONTROL,
 		MENU_DETAIL_BMS_INFO, MENU_DETAIL_ALM_BMS, MENU_DETAIL_IO_INFO,
 		MENU_DETAIL_BMS_BATT_ST2, MENU_DETAIL_BMS_ALL_TEMP, MENU_DETAIL_BMS_ERR_INFO,
 		MENU_DETAIL_BMS_INFO_SYS, MENU_DETAIL_BMS_SW_STA, MENU_DETAIL_BMS_CELLVOL,
-		MENU_DETAIL_BMS_CELLVOL_2, MENU_DETAIL_BMS_CHG_INFO, MENU_DETAIL_NETWORK
+		MENU_DETAIL_BMS_CELLVOL_2, MENU_DETAIL_BMS_CHG_INFO, MENU_DETAIL_NETWORK,
+		MENU_DETAIL_MODBUS
 	};
 	
 	// Tìm vị trí menu hiện tại
 	int start_idx = -1;
-	for (int i = 0; i < 15; i++) {
+	for (int i = 0; i < 16; i++) {
 		if (menu_list[i] == start_menu) {
 			start_idx = i;
 			break;
@@ -124,8 +126,8 @@ static menu_detail_t find_prev_allowed_detail_menu(menu_detail_t start_menu)
 	}
 	
 	// Tìm menu hợp lệ trước đó
-	for (int i = 1; i < 15; i++) {
-		int idx = (start_idx - i + 15) % 15;
+	for (int i = 1; i < 16; i++) {
+		int idx = (start_idx - i + 16) % 16;
 		if (allowed_mask & menu_list[idx]) {
 			return menu_list[idx];
 		}
@@ -201,7 +203,7 @@ void display_can_info_2(void) {
 
     // Hiển thị lỗi
     char error_string[100];
-    switch (can_slider.raw_err_code) 
+    switch (can_slider.effective_raw_err_code) 
     {
         case 0: strcpy(error_string, "Error: None"); break;
         case OVER_CURRENT: strcpy(error_string, "Error: Cur_Over"); break;
@@ -212,7 +214,9 @@ void display_can_info_2(void) {
         case OVER_VOLTAGE_BATTERY: strcpy(error_string, "Error: Bat_Volt_Hi"); break;
         case MOTOR_TEMP_HIGH: strcpy(error_string, "Error: Motor_Temp_Hi"); break;
         case MOTOR_TEMP_SENSOR_ERROR: strcpy(error_string, "Error: Motor_Temp_Err"); break;
-        case ACCELERATOR_FAULT: strcpy(error_string, "Error: Acc_Err"); break;
+        case ACCELERATOR_FAULT:
+			strcpy(error_string, vcu_ctx.accel_safety_interlock_active ? "Safety: Release accel" : "Error: Acc_Err");
+			break;
         default: strcpy(error_string, "Error: ERROR"); break;
     }
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(error_string)/2)*6), 5, error_string);
@@ -668,42 +672,36 @@ void display_bms_err_info(void) {
     char error_text[30];
     
     // Hiển thị các lỗi (tối đa 4 lỗi trên màn hình)
-    if (bms.bmsErrInfo.line_res_high) {
-        strcpy(error_text, "Line Res High");
-        ST7565_drawstring_anywhere(5, y_pos, error_text);
-        y_pos += 12;
-        error_count++;
-    }
-    if (bms.bmsErrInfo.mos_overtemp && error_count < 4) {
-        strcpy(error_text, "MOS Over Temp");
-        ST7565_drawstring_anywhere(5, y_pos, error_text);
-        y_pos += 12;
-        error_count++;
-    }
-    if (bms.bmsErrInfo.cell_count_mismatch && error_count < 4) {
-        strcpy(error_text, "Cell Count Err");
-        ST7565_drawstring_anywhere(5, y_pos, error_text);
-        y_pos += 12;
-        error_count++;
-    }
-    if (bms.bmsErrInfo.cur_sensor_fault && error_count < 4) {
-        strcpy(error_text, "Cur Sensor Err");
-        ST7565_drawstring_anywhere(5, y_pos, error_text);
-        y_pos += 12;
-        error_count++;
-    }
-    if (bms.bmsErrInfo.chg_mos_fault && error_count < 4) {
-        strcpy(error_text, "Chg MOS Fault");
-        ST7565_drawstring_anywhere(5, y_pos, error_text);
-        y_pos += 12;
-        error_count++;
-    }
-    if (bms.bmsErrInfo.dchg_mos_fault && error_count < 4) {
-        strcpy(error_text, "Dchg MOS Fault");
-        ST7565_drawstring_anywhere(5, y_pos, error_text);
-        y_pos += 12;
-        error_count++;
-    }
+	#define ADD_BMS_ERR(cond, msg) \
+		do { \
+			if ((cond) && (error_count < 4)) { \
+				strcpy(error_text, (msg)); \
+				ST7565_drawstring_anywhere(5, y_pos, error_text); \
+				y_pos += 12; \
+				error_count++; \
+			} \
+		} while (0)
+
+	ADD_BMS_ERR(bms.bmsErrInfo.line_res_high,       "Line Res High");
+	ADD_BMS_ERR(bms.bmsErrInfo.mos_overtemp,        "MOS Over Temp");
+	ADD_BMS_ERR(bms.bmsErrInfo.cur_sensor_fault,    "Cur Sensor Err");
+	ADD_BMS_ERR(bms.bmsErrInfo.cell_overvolt,       "Cell Over Volt");
+	ADD_BMS_ERR(bms.bmsErrInfo.pack_overvolt,       "Pack Over Volt");
+	ADD_BMS_ERR(bms.bmsErrInfo.cell_undervolt,      "Cell Under Volt");
+	ADD_BMS_ERR(bms.bmsErrInfo.pack_undervolt,      "Pack Under Volt");
+	ADD_BMS_ERR(bms.bmsErrInfo.chg_overcurrent,     "Chg Over Cur");
+	ADD_BMS_ERR(bms.bmsErrInfo.dchg_overcurrent,    "DChg Over Cur");
+	ADD_BMS_ERR(bms.bmsErrInfo.chg_short,           "Chg Short");
+	ADD_BMS_ERR(bms.bmsErrInfo.dchg_short,          "DChg Short");
+	ADD_BMS_ERR(bms.bmsErrInfo.chg_temp_high,       "Chg Temp High");
+	ADD_BMS_ERR(bms.bmsErrInfo.chg_temp_low,        "Chg Temp Low");
+	ADD_BMS_ERR(bms.bmsErrInfo.dchg_temp_high,      "DChg Temp High");
+	ADD_BMS_ERR(bms.bmsErrInfo.comm_inner_fault,    "Comm Inner Fault");
+	ADD_BMS_ERR(bms.bmsErrInfo.chg_mos_fault,       "Chg MOS Fault");
+	ADD_BMS_ERR(bms.bmsErrInfo.dchg_mos_fault,      "Dchg MOS Fault");
+	ADD_BMS_ERR(bms.bmsErrInfo.cell_count_mismatch, "Cell Count Err");
+
+	#undef ADD_BMS_ERR
     
     // Nếu không có lỗi
     if (error_count == 0) {
@@ -875,12 +873,12 @@ void display_main_init(void) {
     sprintf(io_text, "Contactor: %s", outputs->contactor_on ? "ON" : "OFF");
     ST7565_drawstring_anywhere(5, 20, io_text);
     
-    char mode_text[30];
-    sprintf(mode_text, "Mode: %s", can_slider.slider_2.control_mode ? "CAN" : "PHYS");
-    ST7565_drawstring_anywhere(5, 35, mode_text);
+    char ksi_text[30];
+    sprintf(ksi_text, "KSI: %s", vcu_ctx.inputs.KSI ? "ON" : "OFF");
+    ST7565_drawstring_anywhere(5, 35, ksi_text);
     
     // Hướng dẫn xem chi tiết
-    char hint_text[] = "ENTER: Details ERROR";
+    char hint_text[] = "ENTER: Details";
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
     
     updateDisplay();
@@ -1058,8 +1056,9 @@ void display_network(void)
 
     memset(displayBuffer, 0, LCD_BUFFER_SIZE);
     
-    char title_text[] = "NETWORK";
-    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    char step_sim[10];
+    sprintf(step_sim, "Step: %d", simStep);
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(step_sim)/2)*6), 5, step_sim);
 
     char simStatus_text[20];
     switch(simStatus)
@@ -1074,9 +1073,14 @@ void display_network(void)
             strcpy(simStatus_text, "No SIM...");
         }
         break;
-        case Sim_CheckSignal_Status:
+        case Sim_CheckSignal_Status_1:
         {
             strcpy(simStatus_text, "Checking signal...");
+        }
+        break;
+        case Sim_CheckSignal_Status_2:
+        {
+            strcpy(simStatus_text, "SIM GPRS setup");
         }
         break;
         case Sim_CheckNetwork_Status:
@@ -1125,6 +1129,74 @@ void display_network(void)
     updateDisplay();
 }
 
+/**
+ * @brief Hiển thị trạng thái Modbus RS485
+ */
+void display_modbus_rs485(void)
+{
+    memset(displayBuffer, 0, LCD_BUFFER_SIZE);
+    
+    char title_text[] = "Modbus RS485";
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
+    
+    char modbusStatus_text[20];
+    e_modbus_status status = ModbusSlaveComp_GetStatus();
+    switch(status)
+    {
+        case Modbus_Init_Status:
+        {
+            strcpy(modbusStatus_text, "Initializing...");
+        }
+        break;
+        case Modbus_Idle_Status:
+        {
+            strcpy(modbusStatus_text, "Idle");
+        }
+        break;
+        case Modbus_Receiving_Status:
+        {
+            strcpy(modbusStatus_text, "Receiving...");
+        }
+        break;
+        case Modbus_Processing_Status:
+        {
+            strcpy(modbusStatus_text, "Processing...");
+        }
+        break;
+        case Modbus_Responding_Status:
+        {
+            strcpy(modbusStatus_text, "Responding...");
+        }
+        break;
+        case Modbus_Error_Status:
+        {
+            strcpy(modbusStatus_text, "Error");
+        }
+        break;
+        case Modbus_Ready_Status:
+        {
+            strcpy(modbusStatus_text, "Ready");
+        }
+        break;
+        default:
+        {
+            strcpy(modbusStatus_text, "Unknown");
+        }
+        break;
+    }
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(modbusStatus_text)/2)*6), 20, modbusStatus_text);
+    
+    char addr_text[20];
+    sprintf(addr_text, "Slave ID: %d", SLAVER_ADDRESS);
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(addr_text)/2)*6), 35, addr_text);
+    
+    char baud_text[20];
+    sprintf(baud_text, "Baudrate: 9600");
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(baud_text)/2)*6), 50, baud_text);
+    
+    updateDisplay();
+}
+
 void process_button(void) {
     // Xử lý button actions từ interrupt
     static uint8_t last_button_enter = 0;
@@ -1145,7 +1217,7 @@ void process_button(void) {
                     } else {
                         throttle_selected_param = THROTTLE_PARAM_SPEED; // Quay vòng
                     }
-                    debug_print("Parameter selection changed\r\n");
+                    //debug_print("Parameter selection changed\r\n");
                 } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
                     // Chế độ chỉnh sửa giá trị
                     if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
@@ -1178,7 +1250,7 @@ void process_button(void) {
                 } else {
                     // Chế độ navigation - chuyển menu forward (chỉ menu hợp lệ)
                     current_detail_menu = find_next_allowed_detail_menu(current_detail_menu);
-                    debug_print("Detail menu switched forward\r\n");
+                    //debug_print("Detail menu switched forward\r\n");
                 }
             } else if (current_detail_menu == MENU_DETAIL_IO_INFO) {
                 if (io_mode == IO_EDIT_SELECT) {
@@ -1188,7 +1260,7 @@ void process_button(void) {
                     } else {
                         io_selected_param = IO_PARAM_LIGHT; // Quay vòng
                     }
-                    debug_print("IO parameter selection changed\r\n");
+                    //debug_print("IO parameter selection changed\r\n");
                 } else if (io_mode == IO_EDIT_VALUE) {
                     // Chế độ chỉnh sửa trạng thái - toggle relay
                     if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
@@ -1201,12 +1273,12 @@ void process_button(void) {
                 } else {
                     // Chế độ navigation - chuyển menu forward (chỉ menu hợp lệ)
                     current_detail_menu = find_next_allowed_detail_menu(current_detail_menu);
-                    debug_print("Detail menu switched forward\r\n");
+                    //debug_print("Detail menu switched forward\r\n");
                 }
             } else {
                 // Không phải menu throttle hoặc IO - chuyển menu forward (chỉ menu hợp lệ)
                 current_detail_menu = find_next_allowed_detail_menu(current_detail_menu);
-                debug_print("Detail menu switched forward\r\n");
+                //debug_print("Detail menu switched forward\r\n");
             }
         }
     } else if (button_up_pressed && HAL_GetTick() - button_up_time > BUTTON_LONG_PRESS_TIME_MS) {
@@ -1239,7 +1311,7 @@ void process_button(void) {
                 } else {
                     throttle_selected_param = THROTTLE_PARAM_BRAKE; // Quay vòng
                 }
-                debug_print("Parameter selection changed\r\n");
+                //debug_print("Parameter selection changed\r\n");
             } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
                 // Chế độ chỉnh sửa giá trị
                 if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
@@ -1272,7 +1344,7 @@ void process_button(void) {
             } else {
                 // Chế độ navigation - chuyển menu backward (chỉ menu hợp lệ)
                 current_detail_menu = find_prev_allowed_detail_menu(current_detail_menu);
-                debug_print("Detail menu switched backward\r\n");
+                //debug_print("Detail menu switched backward\r\n");
             }
         } else if (current_detail_menu == MENU_DETAIL_IO_INFO) {
             if (io_mode == IO_EDIT_SELECT) {
@@ -1282,7 +1354,7 @@ void process_button(void) {
                 } else {
                     io_selected_param = IO_PARAM_MOTOR_STATUS; // Quay vòng
                 }
-                debug_print("IO parameter selection changed\r\n");
+                //debug_print("IO parameter selection changed\r\n");
             } else if (io_mode == IO_EDIT_VALUE) {
                 // Chế độ chỉnh sửa trạng thái - toggle relay
                 if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
@@ -1295,12 +1367,12 @@ void process_button(void) {
             } else {
                 // Chế độ navigation - chuyển menu backward (chỉ menu hợp lệ)
                 current_detail_menu = find_prev_allowed_detail_menu(current_detail_menu);
-                debug_print("Detail menu switched backward\r\n");
+                //debug_print("Detail menu switched backward\r\n");
             }
         } else {
             // Không phải menu throttle hoặc IO - chuyển menu backward (chỉ menu hợp lệ)
             current_detail_menu = find_prev_allowed_detail_menu(current_detail_menu);
-            debug_print("Detail menu switched backward\r\n");
+            //debug_print("Detail menu switched backward\r\n");
         }
         }
     } else if (button_down_pressed && HAL_GetTick() - button_down_time > BUTTON_LONG_PRESS_TIME_MS) {
@@ -1330,7 +1402,7 @@ void process_button(void) {
             menu_display_mode = MENU_MODE_DETAIL;
             // Tìm menu chi tiết hợp lệ đầu tiên
             current_detail_menu = find_next_allowed_detail_menu(MENU_DETAIL_BMS_INFO);
-            debug_print("Switched to detail mode\r\n");
+            //debug_print("Switched to detail mode\r\n");
         }
     } else if (!button_enter_pressed && last_button_enter && !last_enter_long_press_handled) {
         enter_long_press_handled = 0; // Reset flag khi bắt đầu nhấn
@@ -1341,7 +1413,7 @@ void process_button(void) {
                     // Lần đầu ấn ENTER - vào chế độ chọn thông số
                     throttle_mode = THROTTLE_EDIT_SELECT;
                     throttle_selected_param = THROTTLE_PARAM_BRAKE; // Reset về thông số đầu tiên
-                    debug_print("Entered throttle select mode\r\n");
+                    //debug_print("Entered throttle select mode\r\n");
                 } else if (throttle_mode == THROTTLE_EDIT_SELECT) {
                     // Ấn ENTER lần 2 - vào chế độ chỉnh sửa giá trị
                     throttle_mode = THROTTLE_EDIT_VALUE;
@@ -1351,7 +1423,7 @@ void process_button(void) {
                     if (throttle_selected_param == THROTTLE_PARAM_SPEED) {
                         throttle_value = (can_slider_vcu.speed_high << 8) | can_slider_vcu.speed_low;
                     }
-                    debug_print("Entered throttle edit value mode\r\n");
+                    //debug_print("Entered throttle edit value mode\r\n");
                 } else if (throttle_mode == THROTTLE_EDIT_VALUE) {
                     can_slider_vcu = throttle_vehicle_mode_temp;
                     throttle_mode = THROTTLE_EDIT_SELECT; // Quay về chế độ chọn
@@ -1361,7 +1433,7 @@ void process_button(void) {
                     // Lần đầu ấn ENTER - vào chế độ chọn relay
                     io_mode = IO_EDIT_SELECT;
                     io_selected_param = IO_PARAM_MOTOR_STATUS; // Reset về relay đầu tiên
-                    debug_print("Entered IO select mode\r\n");
+                    //debug_print("Entered IO select mode\r\n");
                 } else if (io_mode == IO_EDIT_SELECT) {
                     // Ấn ENTER lần 2 - vào chế độ chỉnh sửa trạng thái
                     io_mode = IO_EDIT_VALUE;
@@ -1369,18 +1441,18 @@ void process_button(void) {
                     io_states_temp.disable_motor = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_2) == GPIO_PIN_SET) ? 1 : 0;
                     io_states_temp.contactor_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_3) == GPIO_PIN_SET) ? 1 : 0;
                     io_states_temp.light_state = (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_6) == GPIO_PIN_SET) ? 1 : 0;
-                    debug_print("Entered IO edit value mode\r\n");
+                    //debug_print("Entered IO edit value mode\r\n");
                 } else if (io_mode == IO_EDIT_VALUE) {
                     // Ấn ENTER lần 3 - lưu giá trị và áp dụng vào GPIO
                     if (io_selected_param == IO_PARAM_MOTOR_STATUS) {
                         vcu_ctx.inputs.disable_motor_request = io_states_temp.disable_motor;
-                        debug_print("Motor state saved\r\n");
+                        //debug_print("Motor state saved\r\n");
                     } else if (io_selected_param == IO_PARAM_CONTACTOR) {
                         vcu_ctx.inputs.contactor_request = io_states_temp.contactor_state;
-                        debug_print("Contactor state saved\r\n");
+                        //debug_print("Contactor state saved\r\n");
                     } else if (io_selected_param == IO_PARAM_LIGHT) {
                         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, io_states_temp.light_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-                        debug_print("Light state saved\r\n");
+                        //debug_print("Light state saved\r\n");
                     }
                     io_mode = IO_EDIT_SELECT; // Quay về chế độ chọn
                 }
@@ -1396,26 +1468,26 @@ void process_button(void) {
                 if (throttle_mode == THROTTLE_EDIT_SELECT || throttle_mode == THROTTLE_EDIT_VALUE) {
                     // Thoát về chế độ điều hướng
                     throttle_mode = THROTTLE_NAVIGATION;
-                    debug_print("Exited throttle edit mode\r\n");
+                    //debug_print("Exited throttle edit mode\r\n");
                 } else {
                     // Quay về overview mode
                     menu_display_mode = MENU_MODE_OVERVIEW;
-                    debug_print("Returned to overview mode\r\n");
+                    //debug_print("Returned to overview mode\r\n");
                 }
             } else if (current_detail_menu == MENU_DETAIL_IO_INFO) {
                 if (io_mode == IO_EDIT_SELECT || io_mode == IO_EDIT_VALUE) {
                     // Thoát về chế độ điều hướng
                     io_mode = IO_NAVIGATION;
-                    debug_print("Exited IO edit mode\r\n");
+                    //debug_print("Exited IO edit mode\r\n");
                 } else {
                     // Quay về overview mode
                     menu_display_mode = MENU_MODE_OVERVIEW;
-                    debug_print("Returned to overview mode\r\n");
+                    //debug_print("Returned to overview mode\r\n");
                 }
             } else {
                 // Quay về overview mode
                 menu_display_mode = MENU_MODE_OVERVIEW;
-                debug_print("Returned to overview mode\r\n");
+                //debug_print("Returned to overview mode\r\n");
             }
         }
     }
@@ -1517,6 +1589,9 @@ void process_menu(void) {
 			break;
         case MENU_DETAIL_NETWORK:
             display_network();
+            break;
+        case MENU_DETAIL_MODBUS:
+            display_modbus_rs485();
             break;
 		default:
 			display_bms_info();
