@@ -76,7 +76,10 @@ typedef struct {
 	uint32_t last_motor_rpm;
 	uint32_t rpm_accel;
 	uint32_t last_time_accel;
-	uint8_t raw_err_code;
+	uint8_t raw_err_code;           // mã lỗi thô đang nhận trực tiếp từ controller
+	uint32_t effective_error_code;  // bit lỗi hiệu dụng sau khi VCU gộp lỗi trung tâm
+	uint32_t effective_warning_code; // bit cảnh báo hiệu dụng do VCU tính từ ngưỡng cảnh báo
+	uint8_t effective_raw_err_code; // mã lỗi hiệu dụng ưu tiên cao nhất cho HMI/Display
 } Can_Slider_t;
 extern Can_Slider_t can_slider;
 

@@ -47,7 +47,7 @@
 #define ADR_INPUT_MOTOR_TEMP             106   // u16, nhiệt độ motor (3x106)
 #define ADR_INPUT_DRIVER_TEMP            107   // u16, nhiệt độ Driver (3x107)
 #define ADR_INPUT_VELOCITY               108   // u16, vận tốc (3x108)
-#define ADR_INPUT_DRIVER_FAULT           109   // u16, lỗi (3x109)
+#define ADR_INPUT_DRIVER_FAULT           109   // u16, trạng thái motor: 0=OK, 1=warning, 2=fault (3x109)
 
 #define ADR_INPUT_EVENT_POWER_STATUS     110   // u16, sự kiện thay đổi trạng thái công suất (3x110)
 #define ADR_INPUT_EVENT_GEAR_STATUS		 111   // u16, sự kiện thay đổi trạng thái cần số (3x111)
@@ -55,8 +55,23 @@
 #define ADR_INPUT_EVENT_MOTOR_STATUS     113   // u16, sự kiện thay đổi trạng thái động cơ (3x113)
 #define ADR_INPUT_EVENT_GPS_STATUS		 114   // u16, sự kiện thay đổi trạng thái GPS (3x114)
 #define ADR_INPUT_EVENT_VCU_STATUS 		 115   // u16, sự kiện thay đổi trạng thái hệ thống (3x115)
+#define ADR_INPUT_DRIVER_THR_STATUS      116   // u16, trạng thái validate/save ngưỡng lỗi driver (3x116)
+#define ADR_INPUT_DRIVER_ALM_TEMP_HIGH   120   // u16, cảnh báo nhiệt controller cao (3x120)
+#define ADR_INPUT_DRIVER_ALM_MOTOR_TEMP  121   // u16, cảnh báo nhiệt motor cao (3x121)
+#define ADR_INPUT_DRIVER_ALM_UNDER_VOLT  122   // u16, cảnh báo thấp áp (3x122)
+#define ADR_INPUT_DRIVER_ALM_OVER_VOLT   123   // u16, cảnh báo quá áp (3x123)
+#define ADR_INPUT_GPS_ACTIVE             124   // bit, 1 = GPS active/fix, 0 = chưa active (3x124)
 
 // =======================  Holding registers (4X) ================== //
+#define ADR_HOLD_DRIVER_TEMP_HIGH_C      150   // 4x150, ngưỡng nhiệt controller cao
+#define ADR_HOLD_MOTOR_TEMP_HIGH_C       151   // 4x151, ngưỡng nhiệt motor cao
+#define ADR_HOLD_DRIVER_UNDER_VOLT_V     152   // 4x152, ngưỡng thấp áp
+#define ADR_HOLD_DRIVER_OVER_VOLT_V      153   // 4x153, ngưỡng quá áp
+#define ADR_HOLD_DRIVER_ALM_TEMP_HIGH_C  154   // 4x154, ngưỡng cảnh báo nhiệt controller cao
+#define ADR_HOLD_DRIVER_ALM_MOTOR_TEMP_C 155   // 4x155, ngưỡng cảnh báo nhiệt motor cao
+#define ADR_HOLD_DRIVER_ALM_UNDER_VOLT_V 156   // 4x156, ngưỡng cảnh báo thấp áp
+#define ADR_HOLD_DRIVER_ALM_OVER_VOLT_V  157   // 4x157, ngưỡng cảnh báo quá áp
+#define ADR_HOLD_DRIVER_THR_SAVE         160   // 4x160, ghi 1 để lưu EPROM
 
 // =======================  Coils (0X) ================== //
 // Có thể đọc/ghi 

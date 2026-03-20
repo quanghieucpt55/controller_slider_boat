@@ -31,6 +31,7 @@ Library_User/Boat/Frame \
 Library_User/Boat/Log \
 Library_User/Controller_Slider/Src \
 Library_User/Display/Src \
+Library_User/DriverFaultConfig \
 Library_User/GNSS \
 Library_User/Led_Error \
 Library_User/ModbusRTU \

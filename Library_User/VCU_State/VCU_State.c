@@ -6,9 +6,9 @@
  */
 
 #include "VCU_State.h"
+#include "driver_fault_config.h"
 #include "modbus_slave_define.h"
 #include "modbus_msg_handle.h"
-#include "extern_rom.h"
 #include <string.h>
 
 vcu_state_context_t vcu_ctx;
@@ -21,17 +21,6 @@ static bool VCU_HasCriticalFault(void);
 static bool VCU_SliderCriticalError(void);
 static bool VCU_BMSCriticalError(void);
 
-typedef struct {
-	// Lưu ngưỡng đặt báo lỗi 
-	uint16_t controller_temp_high_C; // 80 degC
-	uint16_t motor_temp_high_C;      // 120 degC
-	uint16_t under_voltage_dV;       // 72V -> 720 (0.1V)
-	uint16_t over_voltage_dV;        // 128V -> 1280 (0.1V)
-} driver_fault_thresholds_t;
-
-static driver_fault_thresholds_t g_driver_fault_thr;
-
-static void VCU_LoadDriverFaultThresholds(void);
 static void VCU_ApplyDriverFaultOverride(void);
 
 static void VCU_UpdateInputs(void);
@@ -81,30 +70,22 @@ void VCU_StateInit(void)
 	vcu_ctx.accel_safety_interlock_active = false;
 	vcu_ctx.accel_press_since_ksi_on = false;
 
-	VCU_LoadDriverFaultThresholds();
-}
-
-static void VCU_LoadDriverFaultThresholds(void)
-{
-	memset(&g_driver_fault_thr, 0, sizeof(g_driver_fault_thr));
-
-	// Default theo yêu cầu người dùng
-	g_driver_fault_thr.controller_temp_high_C = 80u;
-	g_driver_fault_thr.motor_temp_high_C = 120u;
-	g_driver_fault_thr.under_voltage_dV = 720u; // 72.0V
-	g_driver_fault_thr.over_voltage_dV = 1280u; // 128.0V
-
-	// Nếu EPROM chưa có dữ liệu hợp lệ => lưu default vào EPROM.
-	if (!ExRom_ReadParam_WithCRC16(ADR_ROM_DRIVER_FAULT_THRESHOLDS,
-			(uint8_t *)&g_driver_fault_thr, (uint16_t)sizeof(g_driver_fault_thr))) {
-		(void)ExRom_SaveParam_WithCRC16(ADR_ROM_DRIVER_FAULT_THRESHOLDS,
-				(uint8_t *)&g_driver_fault_thr, (uint16_t)sizeof(g_driver_fault_thr));
-	}
+	DriverFaultConfig_Init();
 }
 
 static void VCU_ApplyDriverFaultOverride(void)
 {
-	// Các bit lỗi hiện tại đang dùng trong can_slider.slider_1.error_code:
+	const driver_fault_thresholds_t *driver_thr = DriverFaultConfig_Get();
+
+	/* KSI OFF hoặc chưa có dữ liệu điện áp driver hợp lệ */
+	if ((!vcu_ctx.inputs.KSI) || (can_slider.slider_2.battery_voltage <= 0.0f)) {
+		can_slider.effective_raw_err_code = can_slider.raw_err_code;
+		can_slider.effective_error_code = can_slider.slider_1.error_code;
+		can_slider.effective_warning_code = 0u;
+		return;
+	}
+
+	// Các bit lỗi thô từ controller đang dùng trong can_slider.slider_1.error_code:
 	// CONTROLLER_TEMP_HIGH = 0x0002
 	// UNDER_VOLTAGE_BATTERY = 0x0010
 	// OVER_VOLTAGE_BATTERY  = 0x0020
@@ -114,46 +95,58 @@ static void VCU_ApplyDriverFaultOverride(void)
 	const uint32_t mask_over_voltage_batt = 0x0020u;
 	const uint32_t mask_motor_temp_high = 0x0040u;
 
-	const float under_v = (g_driver_fault_thr.under_voltage_dV / 10.0f);
-	const float over_v = (g_driver_fault_thr.over_voltage_dV / 10.0f);
+	const float under_v = (float)driver_thr->under_voltage_V;
+	const float over_v = (float)driver_thr->over_voltage_V;
+	const float under_warn_v = (float)driver_thr->under_voltage_warn_V;
+	const float over_warn_v = (float)driver_thr->over_voltage_warn_V;
 
-	const bool controller_temp_high = (can_slider.slider_1.controller_temp >= g_driver_fault_thr.controller_temp_high_C);
-	const bool motor_temp_high = (can_slider.slider_1.motor_temp >= g_driver_fault_thr.motor_temp_high_C);
+	const bool controller_temp_high = (can_slider.slider_1.controller_temp >= driver_thr->controller_temp_high_C);
+	const bool motor_temp_high = (can_slider.slider_1.motor_temp >= driver_thr->motor_temp_high_C);
 	const bool under_voltage_batt = (can_slider.slider_2.battery_voltage <= under_v);
 	const bool over_voltage_batt = (can_slider.slider_2.battery_voltage >= over_v);
+	const bool controller_temp_warn =
+			(can_slider.slider_1.controller_temp >= driver_thr->controller_temp_warn_C) &&
+			!controller_temp_high;
+	const bool motor_temp_warn =
+			(can_slider.slider_1.motor_temp >= driver_thr->motor_temp_warn_C) &&
+			!motor_temp_high;
+	const bool under_voltage_warn =
+			(can_slider.slider_2.battery_voltage <= under_warn_v) &&
+			!under_voltage_batt;
+	const bool over_voltage_warn =
+			(can_slider.slider_2.battery_voltage >= over_warn_v) &&
+			!over_voltage_batt;
 
-	// Bảo toàn các lỗi khác nhưng override 4 lỗi theo ngưỡng.
-	uint32_t effective_mask = can_slider.slider_1.error_code;
-	effective_mask &= ~(mask_controller_temp_high |
-			mask_under_voltage_batt |
-			mask_over_voltage_batt |
-			mask_motor_temp_high);
+	// OR: nếu 1 trong 2 bên (controller hoặc mạch trung tâm) có lỗi thì báo lỗi.
+	const uint32_t controller_mask = can_slider.slider_1.error_code;
 
-	if (controller_temp_high) effective_mask |= mask_controller_temp_high;
-	if (under_voltage_batt) effective_mask |= mask_under_voltage_batt;
-	if (over_voltage_batt) effective_mask |= mask_over_voltage_batt;
-	if (motor_temp_high) effective_mask |= mask_motor_temp_high;
+	uint32_t center_mask = 0;
+	if (controller_temp_high) center_mask |= mask_controller_temp_high;
+	if (under_voltage_batt) center_mask |= mask_under_voltage_batt;
+	if (over_voltage_batt) center_mask |= mask_over_voltage_batt;
+	if (motor_temp_high) center_mask |= mask_motor_temp_high;
 
-	// Ưu tiên theo mã lỗi lớn hơn.
+	uint32_t warning_mask = 0;
+	if (controller_temp_warn) warning_mask |= mask_controller_temp_high;
+	if (under_voltage_warn) warning_mask |= mask_under_voltage_batt;
+	if (over_voltage_warn) warning_mask |= mask_over_voltage_batt;
+	if (motor_temp_warn) warning_mask |= mask_motor_temp_high;
+
+	const uint32_t effective_mask = controller_mask | center_mask;
+
+	// raw_err_code: ưu tiên mã lỗi lớn hơn.
 	const uint8_t controller_raw = (uint8_t)can_slider.raw_err_code;
-	uint8_t effective_raw = 0;
+	uint8_t center_raw = 0;
+	if (controller_temp_high && center_raw < CONTROLLER_TEMP_HIGH) center_raw = CONTROLLER_TEMP_HIGH;
+	if (under_voltage_batt && center_raw < UNDER_VOLTAGE_BATTERY) center_raw = UNDER_VOLTAGE_BATTERY;
+	if (over_voltage_batt && center_raw < OVER_VOLTAGE_BATTERY) center_raw = OVER_VOLTAGE_BATTERY;
+	if (motor_temp_high && center_raw < MOTOR_TEMP_HIGH) center_raw = MOTOR_TEMP_HIGH;
 
-	// Nếu controller báo các lỗi thuộc nhóm override thì bỏ qua
-	if (controller_raw != 0 &&
-		controller_raw != CONTROLLER_TEMP_HIGH &&
-		controller_raw != UNDER_VOLTAGE_BATTERY &&
-		controller_raw != OVER_VOLTAGE_BATTERY &&
-		controller_raw != MOTOR_TEMP_HIGH) {
-		effective_raw = controller_raw;
-	}
+	const uint8_t effective_raw = (controller_raw > center_raw) ? controller_raw : center_raw;
 
-	if (controller_temp_high && effective_raw < CONTROLLER_TEMP_HIGH) effective_raw = CONTROLLER_TEMP_HIGH;
-	if (under_voltage_batt && effective_raw < UNDER_VOLTAGE_BATTERY) effective_raw = UNDER_VOLTAGE_BATTERY;
-	if (over_voltage_batt && effective_raw < OVER_VOLTAGE_BATTERY) effective_raw = OVER_VOLTAGE_BATTERY;
-	if (motor_temp_high && effective_raw < MOTOR_TEMP_HIGH) effective_raw = MOTOR_TEMP_HIGH;
-
-	can_slider.raw_err_code = effective_raw;
-	can_slider.slider_1.error_code = effective_mask;
+	can_slider.effective_raw_err_code = effective_raw;
+	can_slider.effective_error_code = effective_mask;
+	can_slider.effective_warning_code = warning_mask;
 }
 
 /**
@@ -323,7 +316,7 @@ static void VCU_UpdateInputs(void) {
 	if (!vcu_ctx.accel_safety_interlock_active &&
 		vcu_ctx.inputs.KSI &&
 		!vcu_ctx.accel_press_since_ksi_on &&
-		(can_slider.raw_err_code == ACCELERATOR_FAULT) &&
+		(can_slider.effective_raw_err_code == ACCELERATOR_FAULT) &&
 		(can_slider.slider_2.thr_Val >= ACCEL_RAW_ACTIVE_THRESHOLD)) {
 		vcu_ctx.inputs.disable_motor_request = true;
 		vcu_ctx.accel_press_since_ksi_on = true;
@@ -346,8 +339,8 @@ static void VCU_UpdateInputs(void) {
 
 	/* Nếu lỗi chân ga do interlock thì không coi là critical fault */
 	const bool accel_fault_safety_mode =
-			(vcu_ctx.accel_safety_interlock_active && (can_slider.raw_err_code == ACCELERATOR_FAULT));
-	if ((can_slider.slider_1.error_code != 0) && !accel_fault_safety_mode) {
+			(vcu_ctx.accel_safety_interlock_active && (can_slider.effective_raw_err_code == ACCELERATOR_FAULT));
+	if ((can_slider.effective_error_code != 0u) && !accel_fault_safety_mode) {
 		vcu_ctx.inputs.slider_critical_error = true;
 		vcu_ctx.inputs.slider_ok = false;
 	} else {

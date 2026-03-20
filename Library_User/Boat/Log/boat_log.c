@@ -95,7 +95,7 @@ void BoatGPS_Task(void)
     gpsData.latitude  = lat;
     gpsData.longitude = lon;
 
-    // Boat payload đang dùng:
+    // Boat payload:
     // - sog: km/h * 100 (u16)
     // - cog: deg  * 100 (u16)
     uint32_t sog_x100 = fix.speed; // fix.speed = km/h*100
@@ -245,8 +245,8 @@ void BoatEventUpdate(void)
         current_event_data.err_bms = bms.bmsErrInfo.raw;
         BoatEventLog_Write(Error_BMS, current_event_data.err_bms);
     }
-    if (current_event_data.err_driver != can_slider.slider_1.error_code) {
-        current_event_data.err_driver = can_slider.slider_1.error_code;
+    if (current_event_data.err_driver != can_slider.effective_error_code) {
+        current_event_data.err_driver = can_slider.effective_error_code;
         BoatEventLog_Write(Error_Driver, current_event_data.err_driver);
     }
     if (current_event_data.motor_direc != can_slider.motor_direc) {

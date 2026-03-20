@@ -43,6 +43,7 @@
 "./Library_User/Display/Src/Display_Curtis.o"
 "./Library_User/Display/Src/ST7565.o"
 "./Library_User/Display/Src/glcdfont.o"
+"./Library_User/DriverFaultConfig/driver_fault_config.o"
 "./Library_User/GNSS/example_usage.o"
 "./Library_User/GNSS/gnss_uart_dma.o"
 "./Library_User/GNSS/gps_rmc.o"

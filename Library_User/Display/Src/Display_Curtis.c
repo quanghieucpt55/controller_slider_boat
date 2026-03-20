@@ -203,7 +203,7 @@ void display_can_info_2(void) {
 
     // Hiển thị lỗi
     char error_string[100];
-    switch (can_slider.raw_err_code) 
+    switch (can_slider.effective_raw_err_code) 
     {
         case 0: strcpy(error_string, "Error: None"); break;
         case OVER_CURRENT: strcpy(error_string, "Error: Cur_Over"); break;

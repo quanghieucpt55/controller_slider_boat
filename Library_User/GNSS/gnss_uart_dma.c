@@ -53,7 +53,7 @@ HAL_StatusTypeDef GNSS_UART_DMA_Start(UART_HandleTypeDef *huart)
         return HAL_ERROR;
     }
 
-    // Nếu đã start trước đó thì dừng để restart sạch sẽ
+    // Nếu đã start trước đó thì dừng để restart
     if (s_gnss_uart != NULL) {
         (void)GNSS_UART_DMA_Stop();
     }
@@ -64,11 +64,11 @@ HAL_StatusTypeDef GNSS_UART_DMA_Start(UART_HandleTypeDef *huart)
 
     gps_rmc_init();
 
-    // Start RX DMA (circular). Không restart theo từng burst.
+    // Start RX DMA (circular)
     HAL_StatusTypeDef st = HAL_UART_Receive_DMA(huart, s_rx_buf, (uint16_t)sizeof(s_rx_buf));
     if (st != HAL_OK) return st;
 
-    // Tắt ngắt DMA (HT/TC) để giảm tải IRQ (polling NDTR).
+    // Tắt ngắt DMA (HT/TC) để giảm tải IRQ
     if (huart->hdmarx != NULL) {
         __HAL_DMA_DISABLE_IT(huart->hdmarx, DMA_IT_HT);
         __HAL_DMA_DISABLE_IT(huart->hdmarx, DMA_IT_TC);
@@ -81,7 +81,7 @@ HAL_StatusTypeDef GNSS_UART_DMA_Stop(void)
 {
     if (s_gnss_uart == NULL) return HAL_OK;
 
-    // Dừng DMA RX hiện tại (nếu có)
+    // Dừng DMA RX hiện tại
     HAL_StatusTypeDef st = HAL_UART_DMAStop(s_gnss_uart);
     s_gnss_uart = NULL;
     s_old_pos = 0;
@@ -90,7 +90,7 @@ HAL_StatusTypeDef GNSS_UART_DMA_Stop(void)
 
 void GNSS_UART_DMA_Task(void)
 {
-    // Lấy byte mới từ DMA ring-buffer (polling nhanh mỗi vòng lặp).
+    // Lấy byte mới từ DMA ring-buffer
     gnss_uart_dma_consume_new_bytes();
 
     // Parse các câu đã gom

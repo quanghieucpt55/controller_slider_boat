@@ -17,6 +17,7 @@ RM := rm -rf
 -include Library_User/ModbusRTU/subdir.mk
 -include Library_User/Led_Error/subdir.mk
 -include Library_User/GNSS/subdir.mk
+-include Library_User/DriverFaultConfig/subdir.mk
 -include Library_User/Display/Src/subdir.mk
 -include Library_User/Controller_Slider/Src/subdir.mk
 -include Library_User/Boat/Log/subdir.mk
