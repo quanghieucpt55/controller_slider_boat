@@ -24,7 +24,7 @@
 ../Library_User/Display/Src/Display_Curtis.c:972:6:display_main_charge	152	static
 ../Library_User/Display/Src/Display_Curtis.c:1005:6:display_main_idle	88	static
 ../Library_User/Display/Src/Display_Curtis.c:1030:6:display_main_error	88	static
-../Library_User/Display/Src/Display_Curtis.c:1054:6:display_network	88	static
-../Library_User/Display/Src/Display_Curtis.c:1135:6:display_modbus_rs485	96	static
-../Library_User/Display/Src/Display_Curtis.c:1200:6:process_button	8	static
-../Library_User/Display/Src/Display_Curtis.c:1504:6:process_menu	16	static
+../Library_User/Display/Src/Display_Curtis.c:1072:6:display_network	88	static
+../Library_User/Display/Src/Display_Curtis.c:1153:6:display_modbus_rs485	96	static
+../Library_User/Display/Src/Display_Curtis.c:1218:6:process_button	8	static
+../Library_User/Display/Src/Display_Curtis.c:1522:6:process_menu	16	static

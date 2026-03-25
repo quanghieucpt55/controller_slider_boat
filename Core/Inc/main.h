@@ -95,10 +95,22 @@ extern void debug_print(const char* message);
 #define SCK_RTC_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
+/*
+ * Bật khi đã lắp phần cứng ổ khóa nhiều nấc.
+ * Cần bổ sung 2 tín hiệu đọc:
+ * - IGN_LEVEL1_Pin / IGN_LEVEL1_GPIO_Port
+ * - IGN_LEVEL2_Pin / IGN_LEVEL2_GPIO_Port
+ */
+/* #define VCU_MULTI_LEVEL_IGNITION */
+
 #define RELAY_DISABLE_MOTOR_Pin GPIO_PIN_2
 #define RELAY_DISABLE_MOTOR_GPIO_Port GPIOE
 #define RELAY_CONTACTOR_Pin GPIO_PIN_3
 #define RELAY_CONTACTOR_GPIO_Port GPIOE
+#define RELAY_POS_Pin GPIO_PIN_0
+#define RELAY_POS_GPIO_Port GPIOB
+#define RELAY_NEG_Pin GPIO_PIN_1
+#define RELAY_NEG_GPIO_Port GPIOB
 #define KSI_GPIO_Port GPIOE
 #define KSI_Pin GPIO_PIN_5
 /* USER CODE END Private defines */

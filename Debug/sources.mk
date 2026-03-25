@@ -26,6 +26,7 @@ SUBDIRS := \
 Core/Src \
 Core/Startup \
 Drivers/STM32F4xx_HAL_Driver/Src \
+Library_User/ADS1115 \
 Library_User/BMS_Jihong \
 Library_User/Boat/Frame \
 Library_User/Boat/Log \
@@ -33,6 +34,7 @@ Library_User/Controller_Slider/Src \
 Library_User/Display/Src \
 Library_User/DriverFaultConfig \
 Library_User/GNSS \
+Library_User/IMD \
 Library_User/Led_Error \
 Library_User/ModbusRTU \
 Library_User/Network/Mqtt \

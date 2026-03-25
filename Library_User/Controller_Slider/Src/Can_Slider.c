@@ -30,6 +30,7 @@ void Can_Slider_Init(CAN_HandleTypeDef *hcan) {
 
 	HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
 
+	memset(&can_slider, 0, sizeof(can_slider));
 	can_slider.last_time_accel = HAL_GetTick();
 }
 
@@ -56,6 +57,8 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 }
 
 void Can_Slider_Process(Can_Slider_t *can_slider, CAN_RxHeaderTypeDef *hdr_ptr, uint8_t *d) {
+	can_slider->last_rx_tick = HAL_GetTick();
+
 	switch (hdr_ptr->StdId) {
 		case CAN_SLIDER_1_ID:
 		{
@@ -146,4 +149,12 @@ void Can_Vcu_Send_Slider(CAN_HandleTypeDef *hcan) {
 	hdr.RTR = CAN_RTR_DATA;
 	hdr.DLC = 3;
 	HAL_StatusTypeDef status = HAL_CAN_AddTxMessage(hcan, &hdr, (uint8_t*)&can_slider_vcu, &txMailbox);
+}
+
+bool Can_Slider_IsAlive(uint32_t timeout_ms) {
+	if (can_slider.last_rx_tick == 0u) {
+		return false;
+	}
+
+	return ((HAL_GetTick() - can_slider.last_rx_tick) <= timeout_ms);
 }

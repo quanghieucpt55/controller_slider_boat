@@ -23,8 +23,8 @@
 ../Library_User/Display/Src/Display_Curtis.c:947:6:display_main_physical	3
 ../Library_User/Display/Src/Display_Curtis.c:972:6:display_main_charge	2
 ../Library_User/Display/Src/Display_Curtis.c:1005:6:display_main_idle	2
-../Library_User/Display/Src/Display_Curtis.c:1030:6:display_main_error	2
-../Library_User/Display/Src/Display_Curtis.c:1054:6:display_network	10
-../Library_User/Display/Src/Display_Curtis.c:1135:6:display_modbus_rs485	8
-../Library_User/Display/Src/Display_Curtis.c:1200:6:process_button	95
-../Library_User/Display/Src/Display_Curtis.c:1504:6:process_menu	36
+../Library_User/Display/Src/Display_Curtis.c:1030:6:display_main_error	7
+../Library_User/Display/Src/Display_Curtis.c:1072:6:display_network	10
+../Library_User/Display/Src/Display_Curtis.c:1153:6:display_modbus_rs485	8
+../Library_User/Display/Src/Display_Curtis.c:1218:6:process_button	95
+../Library_User/Display/Src/Display_Curtis.c:1522:6:process_menu	36

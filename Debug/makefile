@@ -16,6 +16,7 @@ RM := rm -rf
 -include Library_User/Network/subdir.mk
 -include Library_User/ModbusRTU/subdir.mk
 -include Library_User/Led_Error/subdir.mk
+-include Library_User/IMD/subdir.mk
 -include Library_User/GNSS/subdir.mk
 -include Library_User/DriverFaultConfig/subdir.mk
 -include Library_User/Display/Src/subdir.mk
@@ -23,6 +24,7 @@ RM := rm -rf
 -include Library_User/Boat/Log/subdir.mk
 -include Library_User/Boat/Frame/subdir.mk
 -include Library_User/BMS_Jihong/subdir.mk
+-include Library_User/ADS1115/subdir.mk
 -include Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk

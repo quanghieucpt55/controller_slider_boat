@@ -7,6 +7,8 @@
 #include "driver_fault_config.h"
 #include "jikong_can.h"
 #include "VCU_State.h"
+#include "boat_log.h"
+#include "imd.h"
 
 static inline uint16_t u16_clamp_u32(uint32_t v)
 {
@@ -207,11 +209,19 @@ static void Modbus_MapInputRegs(void)
     inputReg[ADR_INPUT_BMS_ALM_TEMP_LOW] = (uint16_t)bms.almInfo.temp_low;            // Cảnh báo nhiệt độ thấp
     inputReg[ADR_INPUT_BMS_ALM_SOC_LOW] = (uint16_t)bms.almInfo.soc_low;              // Cảnh báo SOC thấp
     inputReg[ADR_INPUT_BMS_ALM_COMM_FAULT] = (uint16_t)bms.almInfo.comm_fault;         // Cảnh báo truyền thông thất bại
+    
+    inputReg[ADR_INPUT_GPS_ACTIVE] = (gpsData.state == 3u) ? 1u : 0u;
+    const uint32_t imd_pos_ohm = IMD_GetRisoPosOhm();
+    const uint32_t imd_neg_ohm = IMD_GetRisoNegOhm();
+    inputReg[ADR_INPUT_IMD_POS_RISO_KOHM] = u16_clamp_u32((imd_pos_ohm + 500u) / 1000u);
+    inputReg[ADR_INPUT_IMD_NEG_RISO_KOHM] = u16_clamp_u32((imd_neg_ohm + 500u) / 1000u);
+
+    
     inputReg[ADR_INPUT_DRIVER_ALM_TEMP_HIGH] = ((driver_warning_mask & mask_controller_temp_high) != 0u) ? 1u : 0u;
     inputReg[ADR_INPUT_DRIVER_ALM_MOTOR_TEMP] = ((driver_warning_mask & mask_motor_temp_high) != 0u) ? 1u : 0u;
     inputReg[ADR_INPUT_DRIVER_ALM_UNDER_VOLT] = ((driver_warning_mask & mask_under_voltage_batt) != 0u) ? 1u : 0u;
     inputReg[ADR_INPUT_DRIVER_ALM_OVER_VOLT] = ((driver_warning_mask & mask_over_voltage_batt) != 0u) ? 1u : 0u;
-    inputReg[ADR_INPUT_GPS_ACTIVE] = (gpsData.state == 3u) ? 1u : 0u;
+    inputReg[ADR_INPUT_IMD_MEASURE_WARN] = IMD_IsMeasureFault() ? 1u : 0u;
 
     inputReg[ADR_INPUT_DRIVER_VOLT]    = u16_from_float_scale(can_slider.slider_2.battery_voltage, 10.0f);
     inputReg[ADR_INPUT_DRIVER_CURRENT] = u16_from_float_s16_scale(can_slider.slider_2.dc_current, 10.0f);
@@ -225,7 +235,9 @@ static void Modbus_MapInputRegs(void)
         inputReg[ADR_INPUT_DRIVER_FAULT] = 0u;
     }
     if (!vcu_ctx.accel_safety_interlock_active) {
-        if (driver_error_mask != 0u)
+        if (vcu_ctx.inputs.driver_can_lost)
+            inputReg[ADR_INPUT_DRIVER_FAULT] = 2u;
+        else if (driver_error_mask != 0u)
             inputReg[ADR_INPUT_DRIVER_FAULT] = 2u;
         else if (driver_warning_mask != 0u)
             inputReg[ADR_INPUT_DRIVER_FAULT] = 1u;
@@ -275,7 +287,8 @@ static void Modbus_MapCoils(void)
     coils[ADR_COIL_DRIVER_OVER_CURRENT]      = (can_slider.effective_raw_err_code == OVER_CURRENT) ? 0x01 : 0x00;       // Quá dòng
     coils[ADR_COIL_DRIVER_TEMP_HIGH]         = ((driver_error_mask & mask_controller_temp_high) != 0u) ? 0x01 : 0x00;  // Nhiệt độ bộ điều khiển cao
     coils[ADR_COIL_DRIVER_ENCODER_ERROR]     = (can_slider.effective_raw_err_code == MOTOR_ENCODER_ERROR) ? 0x01 : 0x00; // Lỗi bộ mã hóa động cơ
-    coils[ADR_COIL_DRIVER_CAN_COMM_ERROR]    = (can_slider.effective_raw_err_code == COMMUNICATION_ERROR) ? 0x01 : 0x00; // Lỗi truyền thông CAN
+    coils[ADR_COIL_DRIVER_CAN_COMM_ERROR]    = (vcu_ctx.inputs.driver_can_lost ||
+                                                (can_slider.effective_raw_err_code == COMMUNICATION_ERROR)) ? 0x01 : 0x00; // Lỗi truyền thông CAN
     coils[ADR_COIL_DRIVER_UNDER_VOLT]        = ((driver_error_mask & mask_under_voltage_batt) != 0u) ? 0x01 : 0x00;    // Điện áp quá thấp
     coils[ADR_COIL_DRIVER_OVER_VOLT]         = ((driver_error_mask & mask_over_voltage_batt) != 0u) ? 0x01 : 0x00;     // Điện áp quá cao
     coils[ADR_COIL_DRIVER_MOTOR_TEMP_HIGH]   = ((driver_error_mask & mask_motor_temp_high) != 0u) ? 0x01 : 0x00;       // Nhiệt độ động cơ cao
@@ -287,6 +300,11 @@ static void Modbus_MapCoils(void)
     coils[ADR_COIL_DRIVER_ACCELERATE_CHARGE] = vcu_ctx.accel_charge ? 0x01 : 0x00;
     coils[ADR_COIL_DRIVER_ACCELERATE_ERROR] = vcu_ctx.accel_error ? 0x01 : 0x00;
     coils[ADR_COIL_DRIVER_ACCELERATE_INIT] = vcu_ctx.accel_init ? 0x01 : 0x00;
+
+    /*IMD*/
+    coils[ADR_COIL_IMD_FAULT_BOTH] = IMD_IsBothFault() ? 1u : 0u;
+    coils[ADR_COIL_IMD_FAULT_ANY] = (IMD_IsPosFault() || IMD_IsNegFault()) ? 1u : 0u;
+    
 }
 
 
@@ -324,7 +342,7 @@ void SlaverSerial_MessageHandle(Packet_Modbus_Slaver * msg)
             if (msg->address == ADR_COIL_MOTOR_STATE)
             {
                 const bool disable = (coils[ADR_COIL_MOTOR_STATE] != 0);
-                if (vcu_state != VCU_STATE_PHYSICAL) return;
+                if (!VCU_IsManualMotorControlAllowed()) return;
                 VCU_StateSetMotorStatus(disable ? ENABLE_MOTOR : DISABLE_MOTOR);
             }
         }
@@ -338,7 +356,7 @@ void SlaverSerial_MessageHandle(Packet_Modbus_Slaver * msg)
                 ((uint32_t)start + (uint32_t)qty > (uint32_t)ADR_COIL_MOTOR_STATE))
             {
                 const bool disable = (coils[ADR_COIL_MOTOR_STATE] != 0);
-                if (vcu_state != VCU_STATE_PHYSICAL) return;
+                if (!VCU_IsManualMotorControlAllowed()) return;
                 VCU_StateSetMotorStatus(disable ? ENABLE_MOTOR : DISABLE_MOTOR);
             }
         }

@@ -37,6 +37,7 @@
 #include "modbus_slave_comp.h"
 #include "modbus_rtu_interface.h"
 #include "gnss_uart_dma.h"
+#include "imd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +59,8 @@
 ADC_HandleTypeDef hadc1;
 
 CAN_HandleTypeDef hcan1;
+
+I2C_HandleTypeDef hi2c3;
 
 IWDG_HandleTypeDef hiwdg;
 
@@ -90,6 +93,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_I2C3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -146,7 +150,9 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   MX_USART3_UART_Init();
+  MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
+  IMD_Init(&hi2c3);
   // Khởi tạo Modbus RTU Slave
   ModbusRTU_UartInit();
   ModbusSlaveComp_Init();
@@ -190,6 +196,7 @@ int main(void)
     Sim_Work();
     Network_Supervision();
     process_button();
+    IMD_Task();
     VCU_StateTask();
     led_process();
     process_menu();
@@ -337,6 +344,40 @@ static void MX_CAN1_Init(void)
   /* USER CODE BEGIN CAN1_Init 2 */
 
   /* USER CODE END CAN1_Init 2 */
+
+}
+
+/**
+  * @brief I2C3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C3_Init(void)
+{
+
+  /* USER CODE BEGIN I2C3_Init 0 */
+
+  /* USER CODE END I2C3_Init 0 */
+
+  /* USER CODE BEGIN I2C3_Init 1 */
+
+  /* USER CODE END I2C3_Init 1 */
+  hi2c3.Instance = I2C3;
+  hi2c3.Init.ClockSpeed = 100000;
+  hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c3.Init.OwnAddress1 = 0;
+  hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c3.Init.OwnAddress2 = 0;
+  hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C3_Init 2 */
+
+  /* USER CODE END I2C3_Init 2 */
 
 }
 
@@ -666,8 +707,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12|SOFT_I2C_SCL_Pin|SOFT_I2C_SDA_Pin|RST_RTC_Pin
-                          |SDA_RTC_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_12|SOFT_I2C_SCL_Pin
+                          |SOFT_I2C_SDA_Pin|RST_RTC_Pin|SDA_RTC_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|PWR_KEY_Pin, GPIO_PIN_RESET);
@@ -705,6 +746,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB0 PB1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB12 RST_RTC_Pin SDA_RTC_Pin */
   GPIO_InitStruct.Pin = GPIO_PIN_12|RST_RTC_Pin|SDA_RTC_Pin;

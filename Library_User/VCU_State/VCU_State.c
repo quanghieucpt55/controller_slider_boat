@@ -9,6 +9,8 @@
 #include "driver_fault_config.h"
 #include "modbus_slave_define.h"
 #include "modbus_msg_handle.h"
+#include "modbus_slave_comp.h"
+#include "imd.h"
 #include <string.h>
 
 vcu_state_context_t vcu_ctx;
@@ -18,8 +20,10 @@ boat_error_count_t boat_error_count = {0};
 vcu_state_t vcu_state = VCU_STATE_INIT;
 
 static bool VCU_HasCriticalFault(void);
+static bool VCU_HasSystemFault(void);
 static bool VCU_SliderCriticalError(void);
 static bool VCU_BMSCriticalError(void);
+static void VCU_RefreshFaultStatus(void);
 
 static void VCU_ApplyDriverFaultOverride(void);
 
@@ -33,6 +37,36 @@ static void VCU_TransitionTo(vcu_state_t next_state);
 
 /* Ngưỡng nhận biết "đang đạp ga" theo raw */
 #define ACCEL_RAW_ACTIVE_THRESHOLD   (1u)
+#define DRIVER_CAN_LOST_TIMEOUT_MS   (2000u)
+#define DRIVER_STARTUP_GRACE_MS      (6000u)
+#define DRIVER_ERR_IGNORE_MS    (5000u)
+#define HMI_LOST_TIMEOUT_MS          (5000u)
+#define HMI_STARTUP_GRACE_MS         (8000u)
+
+#ifdef VCU_MULTI_LEVEL_IGNITION
+
+#define IGNITION_CONTACTOR_RELEASE_DELAY_MS  (3000u)
+
+static ignition_level_t VCU_ReadIgnitionLevel(void)
+{
+	const bool level_1_active =
+			(HAL_GPIO_ReadPin(IGN_LEVEL1_GPIO_Port, IGN_LEVEL1_Pin) == GPIO_PIN_SET);
+	const bool level_2_active =
+			(HAL_GPIO_ReadPin(IGN_LEVEL2_GPIO_Port, IGN_LEVEL2_Pin) == GPIO_PIN_SET);
+
+	if (!level_1_active && !level_2_active) {
+		return IGNITION_LEVEL_0;
+	}
+	if (level_1_active && !level_2_active) {
+		return IGNITION_LEVEL_1;
+	}
+	if (!level_1_active && level_2_active) {
+		return IGNITION_LEVEL_2;
+	}
+
+	return IGNITION_LEVEL_INVALID;
+}
+#endif
 
 static vcu_state_t VCU_StateHandleInit(void);
 static vcu_state_t VCU_StateHandleCan(void);
@@ -67,8 +101,14 @@ void VCU_StateInit(void)
 	vcu_ctx.last_KSI = false;
 	vcu_ctx.inputs.init_completed = false;
 	vcu_ctx.last_ksi_tick = HAL_GetTick();
+	vcu_ctx.precharge_start_tick = 0u;
 	vcu_ctx.accel_safety_interlock_active = false;
 	vcu_ctx.accel_press_since_ksi_on = false;
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	vcu_ctx.inputs.ignition_level = IGNITION_LEVEL_0;
+	vcu_ctx.last_ignition_level = IGNITION_LEVEL_0;
+	vcu_ctx.last_ignition_level_tick = HAL_GetTick();
+#endif
 
 	DriverFaultConfig_Init();
 }
@@ -160,11 +200,12 @@ static void VCU_ApplyDriverFaultOverride(void)
  */
 void VCU_StateTask(void)
 {
-	static uint32_t send_time = 0;
+	//static uint32_t send_time = 0;
 	vcu_state_t next_state;
 
 	/* Cập nhật các input */
 	VCU_UpdateInputs();
+	VCU_RefreshFaultStatus();
 	next_state = vcu_state;
 
 	/*
@@ -179,6 +220,15 @@ void VCU_StateTask(void)
 			vcu_ctx.inputs.contactor_request = false;
 		}
 	}
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	else if (vcu_ctx.inputs.ignition_level != IGNITION_LEVEL_2) {
+		const bool level_release_delay_done =
+				((HAL_GetTick() - vcu_ctx.last_ignition_level_tick) >= IGNITION_CONTACTOR_RELEASE_DELAY_MS);
+		if (level_release_delay_done) {
+			vcu_ctx.inputs.contactor_request = false;
+		}
+	}
+#endif
 
 	//  if (HAL_GetTick() - send_time > 500) {
 	// 	send_time = HAL_GetTick();
@@ -239,6 +289,10 @@ const vcu_state_outputs_t *VCU_StateOutputs(void)
 
 void VCU_StateSetMotorStatus(motor_status_t status)
 {
+	if (!VCU_IsManualMotorControlAllowed()) {
+		return;
+	}
+
 	vcu_ctx.inputs.disable_motor_request = status == DISABLE_MOTOR ? true : false;
 }
 
@@ -267,9 +321,42 @@ const char *VCU_StateToString(vcu_state_t state)
 	}
 }
 
+bool VCU_HasCriticalFaultActive(void)
+{
+	return vcu_ctx.critical_fault_active;
+}
+
+bool VCU_HasSystemFaultActive(void)
+{
+	return vcu_ctx.system_fault_active;
+}
+
+bool VCU_IsManualMotorControlAllowed(void)
+{
+	if (vcu_ctx.critical_fault_active) {
+		return false;
+	}
+
+	return (vcu_state == VCU_STATE_PHYSICAL) ||
+		   ((vcu_state == VCU_STATE_ERROR) && vcu_ctx.system_fault_active);
+}
+
 static void VCU_UpdateInputs(void) {
 	/* Đọc KSI */
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	vcu_ctx.inputs.ignition_level = VCU_ReadIgnitionLevel();
+	vcu_ctx.inputs.KSI = (vcu_ctx.inputs.ignition_level == IGNITION_LEVEL_1) ||
+						 (vcu_ctx.inputs.ignition_level == IGNITION_LEVEL_2);
+#else
 	vcu_ctx.inputs.KSI = (HAL_GPIO_ReadPin(KSI_GPIO_Port, KSI_Pin) == GPIO_PIN_SET) ? false : true;
+#endif
+
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	if (vcu_ctx.inputs.ignition_level != vcu_ctx.last_ignition_level) {
+		vcu_ctx.last_ignition_level = vcu_ctx.inputs.ignition_level;
+		vcu_ctx.last_ignition_level_tick = HAL_GetTick();
+	}
+#endif
 
 	/* Bắt cạnh KSI (ON/OFF) */
 	if (vcu_ctx.inputs.KSI != vcu_ctx.last_KSI) {
@@ -289,11 +376,32 @@ static void VCU_UpdateInputs(void) {
 			memset(&can_slider, 0, sizeof(can_slider));
 			vcu_ctx.inputs.disable_motor_request = true;
 			vcu_ctx.inputs.init_completed = false;
+			vcu_ctx.inputs.slider_critical_error = false;
+			vcu_ctx.inputs.bms_critical_error = false;
+			vcu_ctx.inputs.driver_can_lost = false;
+			vcu_ctx.inputs.hmi_lost = false;
+			vcu_ctx.imd.pos_low_riso = false;
+			vcu_ctx.imd.neg_low_riso = false;
+			vcu_ctx.imd.measure_fault = false;
+			vcu_ctx.imd.pos_riso_ohm = 0u;
+			vcu_ctx.imd.neg_riso_ohm = 0u;
+			vcu_ctx.inputs.system_fault = false;
+			vcu_ctx.critical_fault_active = false;
+			vcu_ctx.system_fault_active = false;
+			vcu_ctx.slider_critical_error = false;
+			vcu_ctx.bms_critical_error = false;
+			boat_error_count.count_error_slider = 0;
+			boat_error_count.count_error_bms = 0;
+			vcu_ctx.precharge_start_tick = 0u;
 			VCU_TransitionTo(VCU_STATE_INIT);
 			for (int i=0; i<5; i++) {
 				inputReg[110+i] = 0;
 			}
 		}
+	}
+
+	if (!vcu_ctx.inputs.KSI) {
+		return;
 	}
 
 	BMS_Jikong_Service();
@@ -340,7 +448,14 @@ static void VCU_UpdateInputs(void) {
 	/* Nếu lỗi chân ga do interlock thì không coi là critical fault */
 	const bool accel_fault_safety_mode =
 			(vcu_ctx.accel_safety_interlock_active && (can_slider.effective_raw_err_code == ACCELERATOR_FAULT));
-	if ((can_slider.effective_error_code != 0u) && !accel_fault_safety_mode) {
+	const bool driver_fault_reporting_ready =
+			(vcu_ctx.inputs.KSI && vcu_ctx.outputs.contactor_on);
+	const bool ignore_driver_comm_error_startup =
+			((HAL_GetTick() - vcu_ctx.last_ksi_tick) < DRIVER_ERR_IGNORE_MS);
+	if (driver_fault_reporting_ready &&
+		(can_slider.effective_error_code != 0u) &&
+		!accel_fault_safety_mode &&
+		!ignore_driver_comm_error_startup) {
 		vcu_ctx.inputs.slider_critical_error = true;
 		vcu_ctx.inputs.slider_ok = false;
 	} else {
@@ -354,6 +469,35 @@ static void VCU_UpdateInputs(void) {
 			vcu_ctx.inputs.slider_ok = false;
 		}
 	}
+
+	if ((vcu_ctx.precharge_start_tick == 0u) && (can_slider.last_rx_tick != 0u)) {
+		vcu_ctx.precharge_start_tick = can_slider.last_rx_tick;
+	}
+
+	vcu_ctx.inputs.driver_can_lost = false;
+	const bool driver_grace_period_done =
+			((HAL_GetTick() - vcu_ctx.last_ksi_tick) >= DRIVER_STARTUP_GRACE_MS);
+	if (vcu_ctx.inputs.KSI &&
+		driver_grace_period_done &&
+		!Can_Slider_IsAlive(DRIVER_CAN_LOST_TIMEOUT_MS)) {
+		vcu_ctx.inputs.driver_can_lost = true;
+	}
+
+	vcu_ctx.inputs.hmi_lost = false;
+	const bool hmi_grace_period_done =
+			((HAL_GetTick() - vcu_ctx.last_ksi_tick) >= HMI_STARTUP_GRACE_MS);
+	if (vcu_ctx.inputs.KSI &&
+		hmi_grace_period_done &&
+		!ModbusSlaveComp_IsOnline(HMI_LOST_TIMEOUT_MS)) {
+		vcu_ctx.inputs.hmi_lost = true;
+	}
+
+	IMD_GetStatus(&vcu_ctx.imd);
+
+	vcu_ctx.inputs.system_fault = vcu_ctx.inputs.driver_can_lost || vcu_ctx.inputs.hmi_lost;
+	if (vcu_ctx.imd.pos_low_riso || vcu_ctx.imd.neg_low_riso) {
+		vcu_ctx.inputs.system_fault = true;
+	}
 	
 	/* Đọc thông tin sạc từ BMS (BMS quản lý bộ sạc) */
 	/* chgPlug = 1 : đã cắm sạc */
@@ -365,6 +509,12 @@ static void VCU_UpdateInputs(void) {
 
 }
 
+static void VCU_RefreshFaultStatus(void)
+{
+	vcu_ctx.critical_fault_active = VCU_HasCriticalFault();
+	vcu_ctx.system_fault_active = VCU_HasSystemFault();
+}
+
 /**
  * @brief Kiểm tra xem có lỗi nghiêm trọng (Critical Fault) không
  */
@@ -374,12 +524,23 @@ static bool VCU_HasCriticalFault(void)
 	bool bms_critical_error = VCU_BMSCriticalError();
 	vcu_ctx.slider_critical_error = slider_critical_error;
 	vcu_ctx.bms_critical_error = bms_critical_error;
-	return (slider_critical_error|| bms_critical_error);
+	const bool imd_critical_error = IMD_IsBothFault();
+	return (slider_critical_error || bms_critical_error || imd_critical_error);
+}
+
+static bool VCU_HasSystemFault(void)
+{
+	return vcu_ctx.inputs.system_fault;
 }
 
 static bool VCU_SliderCriticalError(void)
 {
 	const uint8_t CRITICAL_FAULT_COUNT_THRESHOLD = 10;
+
+	if (!vcu_ctx.inputs.KSI || !vcu_ctx.outputs.contactor_on) {
+		boat_error_count.count_error_slider = 0;
+		return false;
+	}
 
 	if (vcu_ctx.inputs.slider_critical_error) {
 		if (boat_error_count.count_error_slider < CRITICAL_FAULT_COUNT_THRESHOLD) {
@@ -515,7 +676,7 @@ static void VCU_TransitionTo(vcu_state_t next_state)
 static vcu_state_t VCU_StateHandleInit(void)
 {
 	/* Kiểm tra Critical Error - nếu có lỗi nghiêm trọng, chuyển ngay sang ERROR */
-	if (VCU_HasCriticalFault()) {
+	if (vcu_ctx.critical_fault_active || vcu_ctx.system_fault_active) {
 		vcu_ctx.accel_init = false;
 		return VCU_STATE_ERROR;
 	}
@@ -526,9 +687,37 @@ static vcu_state_t VCU_StateHandleInit(void)
 	}
 	/* Nếu BMS OK, Contactor ON + Slider OK, No Charger → chuyển thẳng sang Physical MODE */
 //	if (vcu_ctx.inputs.bms_ok &&
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	if (vcu_ctx.inputs.ignition_level == IGNITION_LEVEL_INVALID) {
+		vcu_ctx.inputs.contactor_request = false;
+		vcu_ctx.inputs.disable_motor_request = true;
+		vcu_ctx.inputs.init_completed = false;
+		return VCU_STATE_INIT;
+	}
+
+	if (vcu_ctx.inputs.ignition_level == IGNITION_LEVEL_1) {
+		vcu_ctx.inputs.contactor_request = false;
+		vcu_ctx.inputs.disable_motor_request = true;
+		vcu_ctx.inputs.init_completed = false;
+		return VCU_STATE_INIT;
+	}
+
+	if (vcu_ctx.inputs.ignition_level == IGNITION_LEVEL_2) {
+		if ((vcu_ctx.precharge_start_tick != 0u) &&
+			((HAL_GetTick() - vcu_ctx.precharge_start_tick) >= 1000U)) {
+			if (vcu_ctx.inputs.slider_ok) {
+				vcu_ctx.inputs.contactor_request = true;
+				vcu_ctx.inputs.init_completed = true;
+				vcu_ctx.inputs.disable_motor_request = false;
+				return VCU_STATE_PHYSICAL;
+			}
+		}
+	}
+#else
 	if (vcu_ctx.inputs.KSI) {
-		if ((HAL_GetTick() - vcu_ctx.last_ksi_tick) >= 3000U) {
-			/* KSI ON đủ 3s -> bật contactor */
+		if ((vcu_ctx.precharge_start_tick != 0u) &&
+			((HAL_GetTick() - vcu_ctx.precharge_start_tick) >= 1000U)) {
+			/* Driver đã trả CAN và precharge đủ 3s -> bật contactor */
 			vcu_ctx.inputs.contactor_request = true;
 			if (vcu_ctx.inputs.slider_ok) {
 				vcu_ctx.inputs.init_completed = true;
@@ -537,6 +726,7 @@ static vcu_state_t VCU_StateHandleInit(void)
 			}
 		}
 	}
+#endif
 
 	if (can_slider.slider_2.thr_Val >= ACCEL_RAW_ACTIVE_THRESHOLD
 		&& can_slider.motor_direc != 0) 
@@ -563,6 +753,12 @@ static vcu_state_t VCU_StateHandleInit(void)
  */
 static vcu_state_t VCU_StateHandleCan(void)
 {
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	if (vcu_ctx.inputs.ignition_level != IGNITION_LEVEL_2) {
+		return VCU_STATE_INIT;
+	}
+#endif
+
 	if (vcu_ctx.inputs.charger_plugged) {
 		return VCU_STATE_CHARGE;
 	}
@@ -572,7 +768,7 @@ static vcu_state_t VCU_StateHandleCan(void)
 	}
 
 	/* CAN MODE: Parameter, ALM/ERROR; I/O Status; Control Brake, Direction; Control Motor Speed */
-	if (VCU_HasCriticalFault()) {
+	if (vcu_ctx.critical_fault_active || vcu_ctx.system_fault_active) {
 		return VCU_STATE_ERROR;
 	}
 
@@ -595,6 +791,12 @@ static vcu_state_t VCU_StateHandleCan(void)
  */
 static vcu_state_t VCU_StateHandlePhysical(void)
 {
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	if (vcu_ctx.inputs.ignition_level != IGNITION_LEVEL_2) {
+		return VCU_STATE_INIT;
+	}
+#endif
+
 	if (vcu_ctx.inputs.charger_plugged) {
 		return VCU_STATE_CHARGE;
 	}
@@ -603,7 +805,7 @@ static vcu_state_t VCU_StateHandlePhysical(void)
 		return VCU_STATE_CAN;
 	}
 
-	if (VCU_HasCriticalFault()) {
+	if (vcu_ctx.critical_fault_active || vcu_ctx.system_fault_active) {
 		return VCU_STATE_ERROR;
 	}
 
@@ -621,6 +823,11 @@ static vcu_state_t VCU_StateHandlePhysical(void)
  */
 static vcu_state_t VCU_StateHandleCharge(void)
 {
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	if (vcu_ctx.inputs.ignition_level != IGNITION_LEVEL_2) {
+		return VCU_STATE_INIT;
+	}
+#endif
 
 	if (can_slider.slider_2.thr_Val >= ACCEL_RAW_ACTIVE_THRESHOLD
 		&& can_slider.motor_direc != 0) 
@@ -628,7 +835,7 @@ static vcu_state_t VCU_StateHandleCharge(void)
 	else
 		
 
-	if (VCU_HasCriticalFault()) {
+	if (vcu_ctx.critical_fault_active || vcu_ctx.system_fault_active) {
 		vcu_ctx.accel_charge = false;
 		return VCU_STATE_ERROR;
 	}
@@ -644,14 +851,20 @@ static vcu_state_t VCU_StateHandleCharge(void)
 /**
  * @brief Xử lý logic của trạng thái ERROR
  * 
- * Trạng thái lỗi nghiêm trọng:
- * - Disable Motor
+ * Trạng thái lỗi:
+ * - Lỗi nghiêm trọng: Disable Motor
+ * - Lỗi hệ thống: vẫn cho phép HMI chủ động bật/tắt motor
  * - Hiển thị trạng thái lỗi và mô tả lỗi
  * - VCU thực hiện các hành động an toàn
  * @return Trạng thái tiếp theo
  */
 static vcu_state_t VCU_StateHandleError(void)
 {
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	if (vcu_ctx.inputs.ignition_level != IGNITION_LEVEL_2) {
+		return VCU_STATE_INIT;
+	}
+#endif
 
 	if (can_slider.slider_2.thr_Val >= ACCEL_RAW_ACTIVE_THRESHOLD
 		&& can_slider.motor_direc != 0) 
@@ -659,7 +872,11 @@ static vcu_state_t VCU_StateHandleError(void)
 	else
 		vcu_ctx.accel_error = false;
 
-	if (!VCU_HasCriticalFault()) {
+	if (vcu_ctx.critical_fault_active) {
+		vcu_ctx.inputs.disable_motor_request = true;
+	}
+
+	if (!(vcu_ctx.critical_fault_active || vcu_ctx.system_fault_active)) {
 		vcu_ctx.accel_error = false;
 		return VCU_STATE_INIT;
 	}
@@ -684,7 +901,9 @@ static void VCU_ChargerModeEnter(void)
 
 static void VCU_ErrorModeEnter(void)
 {
-	vcu_ctx.inputs.disable_motor_request = true;
+	if (vcu_ctx.critical_fault_active) {
+		vcu_ctx.inputs.disable_motor_request = true;
+	}
 }
 
 static void VCU_InitModeEnter(void)

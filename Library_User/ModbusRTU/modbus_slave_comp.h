@@ -8,6 +8,7 @@
 #ifndef MODBUS_SLAVE_COMP_H_
 #define MODBUS_SLAVE_COMP_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /**
@@ -52,5 +53,12 @@ void ModbusSlaveComp_Init(void);
  * @brief Chạy Modbus Slave 
  */
 void ModbusSlaveComp_Run(void);
+
+/**
+ * @brief Kiểm tra HMI còn online theo timeout
+ * @param timeout_ms timeout tính bằng ms
+ * @return true nếu còn hoạt động, false nếu đã quá timeout
+ */
+bool ModbusSlaveComp_IsOnline(uint32_t timeout_ms);
 
 #endif /* MODBUS_SLAVE_COMP_H_ */

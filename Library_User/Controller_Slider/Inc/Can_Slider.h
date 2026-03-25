@@ -76,6 +76,7 @@ typedef struct {
 	uint32_t last_motor_rpm;
 	uint32_t rpm_accel;
 	uint32_t last_time_accel;
+	uint32_t last_rx_tick;         // thời điểm nhận frame CAN driver gần nhất
 	uint8_t raw_err_code;           // mã lỗi thô đang nhận trực tiếp từ controller
 	uint32_t effective_error_code;  // bit lỗi hiệu dụng sau khi VCU gộp lỗi trung tâm
 	uint32_t effective_warning_code; // bit cảnh báo hiệu dụng do VCU tính từ ngưỡng cảnh báo
@@ -118,6 +119,7 @@ void Can_Slider_Process(Can_Slider_t *can_slider, CAN_RxHeaderTypeDef *hdr, uint
 Can_Slider_Error_Code_t Can_Slider_1_Process(Can_Slider_1_t *slider_1, CAN_RxHeaderTypeDef *hdr, uint8_t *d);
 void Can_Slider_2_Process(Can_Slider_2_t *slider_2, CAN_RxHeaderTypeDef *hdr, uint8_t *d);
 void Can_Vcu_Send_Slider(CAN_HandleTypeDef *hcan);
+bool Can_Slider_IsAlive(uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

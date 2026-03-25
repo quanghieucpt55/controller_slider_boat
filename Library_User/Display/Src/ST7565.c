@@ -65,7 +65,7 @@ void ST7565_drawbitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t w, u
 	  unsigned Row_Address=0;
 	  unsigned int k,i;
 
-	  ST7565_command(CMD_SET_ADC_NORMAL);
+	ST7565_command(CMD_SET_ADC_NORMAL);
 	ST7565_command(CMD_SET_COM_REVERSE);
 	  for(k=0; k<8; k++)
 	  {

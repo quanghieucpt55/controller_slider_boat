@@ -6,6 +6,7 @@
  */
 
 #include <stdint.h>
+#include "main.h"
 #include "modbus_slave_comp.h"
 #include "modbus_msg_handle.h"
 #include "modbus_slave_base.h"
@@ -27,6 +28,7 @@ Packet_Modbus_Slaver packet_comp; // gói dữ liệu comport
 
 // Trạng thái Modbus RS485
 static volatile e_modbus_status modbusStatus = Modbus_Init_Status;
+static uint32_t lastModbusActivityTick = 0u;
 
 e_modbus_status ModbusSlaveComp_GetStatus(void)
 {
@@ -48,6 +50,7 @@ void PacketComp_Init(void)
 void ModbusSlaveComp_Init(void)
 {
 	PacketComp_Init();
+	lastModbusActivityTick = HAL_GetTick();
 	modbusStatus = Modbus_Ready_Status;
 }
 
@@ -107,6 +110,7 @@ void ModbusSlaveComp_Run(void)
     {
         if(ModbusSlaver_DecodeMsg(&packet_comp)==SUCCESSFUL)
         {
+            lastModbusActivityTick = HAL_GetTick();
             modbusStatus = Modbus_Processing_Status;
             Slaver_Do(&packet_comp);// thực thi lệnh
             Slaver_PrepareRespond(&packet_comp);// chuẩn bị dữ liệu phản hồi
@@ -133,4 +137,13 @@ void ModbusSlaveComp_Run(void)
             modbusStatus = Modbus_Ready_Status;
         }
     }
+}
+
+bool ModbusSlaveComp_IsOnline(uint32_t timeout_ms)
+{
+    if (lastModbusActivityTick == 0u) {
+        return false;
+    }
+
+    return ((HAL_GetTick() - lastModbusActivityTick) <= timeout_ms);
 }

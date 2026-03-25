@@ -16,8 +16,15 @@
 #define ADR_INPUT_RUNTIME                37    // u16, thời gian chạy (3x37)
 
 // Điện áp cell 1..30 (mỗi cell u16). Cell 1 bắt đầu tại 3x40.
-#define ADR_INPUT_CELL_VOLT_BASE         40    // Cell 1 = 3x40
-#define ADR_INPUT_CELL_VOLT(n)           (ADR_INPUT_CELL_VOLT_BASE + ((n)-1))
+#define ADR_INPUT_CELL_VOLT_BASE 40
+#define ADR_INPUT_CELL31_VOLT 84
+#define ADR_INPUT_CELL32_VOLT 85
+#define ADR_INPUT_CELL_INVALID 0xFFFF
+#define ADR_INPUT_CELL_VOLT(n) \
+    (((n) >= 1 && (n) <= 30) ? (ADR_INPUT_CELL_VOLT_BASE + ((n) - 1)) : \
+    ((n) == 31) ? ADR_INPUT_CELL31_VOLT : \
+    ((n) == 32) ? ADR_INPUT_CELL32_VOLT : \
+    ADR_INPUT_CELL_INVALID)
 
 // Chỉ số cell max/min 
 #define ADR_INPUT_CELL_MAX_INDEX         70    // 3x70
@@ -38,6 +45,10 @@
 #define ADR_INPUT_BMS_ALM_TEMP_LOW       81    // 3x81, Nhiệt độ thấp (bit 16-17)
 #define ADR_INPUT_BMS_ALM_SOC_LOW        82    // 3x82, SOC thấp (bit 20-21)
 #define ADR_INPUT_BMS_ALM_COMM_FAULT     83    // 3x83, Lỗi truyền thông (bit 28-29)
+
+#define ADR_INPUT_GPS_ACTIVE             86   // bit, 1 = GPS active/fix, 0 = chưa active (3x84)
+#define ADR_INPUT_IMD_POS_RISO_KOHM      87   // u16, Riso POS (kOhm)
+#define ADR_INPUT_IMD_NEG_RISO_KOHM      88   // u16, Riso NEG (kOhm)
 
 // Nhóm Driver / động cơ
 #define ADR_INPUT_DRIVER_VOLT            102   // u16, điện áp driver (3x102)
@@ -60,7 +71,8 @@
 #define ADR_INPUT_DRIVER_ALM_MOTOR_TEMP  121   // u16, cảnh báo nhiệt motor cao (3x121)
 #define ADR_INPUT_DRIVER_ALM_UNDER_VOLT  122   // u16, cảnh báo thấp áp (3x122)
 #define ADR_INPUT_DRIVER_ALM_OVER_VOLT   123   // u16, cảnh báo quá áp (3x123)
-#define ADR_INPUT_GPS_ACTIVE             124   // bit, 1 = GPS active/fix, 0 = chưa active (3x124)
+#define ADR_INPUT_IMD_MEASURE_WARN       124   // u16, cảnh báo lỗi CAN driver (3x124)
+
 
 // =======================  Holding registers (4X) ================== //
 #define ADR_HOLD_DRIVER_TEMP_HIGH_C      150   // 4x150, ngưỡng nhiệt controller cao
@@ -122,5 +134,12 @@
 #define ADR_COIL_DRIVER_ACCELERATE_CHARGE    38    // 0x38, Driver: Tăng tốc khi khởi tạo
 #define ADR_COIL_DRIVER_ACCELERATE_ERROR  39    // 0x39, Driver: Tăng tốc khi sạc
 #define ADR_COIL_DRIVER_ACCELERATE_INIT   40    // 0x40, Driver: Tăng tốc khi lỗi
+
+// Lỗi IMD
+#define ADR_COIL_IMD_FAULT_BOTH          60   // u16, lỗi IMD kép (0=OK,1=Fault)
+
+// Lỗi hệ thống
+#define ADR_COIL_SYSTEM_CAN_DRIVER       80
+#define ADR_COIL_IMD_FAULT_ANY           81   // u16, lỗi IMD (0=OK,1=Fault)
 
 #endif /* _MODBUS_SLAVER_DEFINE_H_ */

@@ -15,6 +15,7 @@ extern "C" {
 #include "main.h"
 #include "Can_Slider.h"
 #include "jikong_can.h"
+#include "imd.h"
 #include <stdbool.h>
 
 typedef enum {
@@ -37,6 +38,15 @@ extern motor_status_t motor_status;
 void VCU_StateSetMotorStatus(motor_status_t status);
 motor_status_t VCU_StateGetMotorStatus(void);
 
+#ifdef VCU_MULTI_LEVEL_IGNITION
+typedef enum {
+	IGNITION_LEVEL_0 = 0,      // Cả 2 input đều OFF
+	IGNITION_LEVEL_1 = 1,      // Input1 ON
+	IGNITION_LEVEL_2 = 2,      // Input2 ON
+	IGNITION_LEVEL_INVALID = 3 // Tổ hợp không hợp lệ
+} ignition_level_t;
+#endif
+
 typedef struct {
 	bool init_completed;          // Khởi tạo hoàn tất
 	bool bms_ok;                  // BMS báo OK, không lỗi pin
@@ -46,10 +56,15 @@ typedef struct {
 	bool charger_error;           // Lỗi sạc từ BMS (đọc từ bms.bmsErrInfo)
 	bool bms_critical_error;      // Lỗi BMS
 	bool slider_critical_error;   // Lỗi bộ điều khiển
+	bool driver_can_lost;         // Mất nhận CAN từ driver khi contactor đang ON
+	bool hmi_lost;                // Mất kết nối HMI qua Modbus
 	bool system_fault;            // Lỗi hệ thống
 	bool disable_motor_request; // Ngắt động cơ
 	bool contactor_request;       // Yêu cầu bật contactor (true = ON, false = OFF)
 	bool KSI;					// Bật tắt chìa khóa (true = ON, false = OFF)
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	ignition_level_t ignition_level; // Nấc khóa điện suy ra từ 2 input
+#endif
 } vcu_state_inputs_t;
 
 typedef struct {
@@ -59,17 +74,25 @@ typedef struct {
 
 typedef struct {
     vcu_state_inputs_t inputs;         // các tín hiệu vào
+	imd_status_t imd;               // trạng thái đo/cảnh báo IMD
 	vcu_state_outputs_t outputs;      // Lệnh xuất ra relay/driver
 	uint32_t last_ksi_tick;    // Mốc thời gian bật chìa khóa
 	bool last_KSI;					// Trạng thái chìa khóa gần nhất
+	uint32_t precharge_start_tick; // Mốc CAN đầu tiên từ driver sau khi KSI ON
 	bool accel_safety_interlock_active; // KSI ON khi đang đạp ga -> yêu cầu nhả ga rồi đạp lại
 	bool accel_press_since_ksi_on; // Đã nhấn ga ít nhất 1 lần kể từ khi KSI ON
 	uint32_t last_accel_release_tick; // Mốc thời gian nhả ga gần nhất
 	bool slider_critical_error; // Lỗi slider
 	bool bms_critical_error; // Lỗi BMS
+	bool critical_fault_active; // Có lỗi nghiêm trọng đang tác động lên state machine
+	bool system_fault_active; // Có lỗi hệ thống đang tác động lên state machine
 	bool accel_init;
 	bool accel_charge;
 	bool accel_error;
+#ifdef VCU_MULTI_LEVEL_IGNITION
+	ignition_level_t last_ignition_level; // Nấc khóa trước đó
+	uint32_t last_ignition_level_tick;    // Mốc thời gian đổi nấc gần nhất
+#endif
 } vcu_state_context_t;
 extern vcu_state_context_t vcu_ctx;
 
@@ -128,6 +151,9 @@ void VCU_StateTask(void);
 vcu_state_t VCU_StateGet(void);
 const vcu_state_outputs_t *VCU_StateOutputs(void);
 const char *VCU_StateToString(vcu_state_t state);
+bool VCU_HasCriticalFaultActive(void);
+bool VCU_HasSystemFaultActive(void);
+bool VCU_IsManualMotorControlAllowed(void);
 
 #ifdef __cplusplus
 }

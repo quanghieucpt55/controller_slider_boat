@@ -1,6 +1,7 @@
 ../Library_User/Controller_Slider/Src/Can_Slider.c:17:6:Can_Slider_Init	1
-../Library_User/Controller_Slider/Src/Can_Slider.c:36:6:HAL_CAN_RxFifo0MsgPendingCallback	4
-../Library_User/Controller_Slider/Src/Can_Slider.c:58:6:Can_Slider_Process	3
-../Library_User/Controller_Slider/Src/Can_Slider.c:72:25:Can_Slider_1_Process	16
-../Library_User/Controller_Slider/Src/Can_Slider.c:134:6:Can_Slider_2_Process	1
-../Library_User/Controller_Slider/Src/Can_Slider.c:141:6:Can_Vcu_Send_Slider	1
+../Library_User/Controller_Slider/Src/Can_Slider.c:37:6:HAL_CAN_RxFifo0MsgPendingCallback	4
+../Library_User/Controller_Slider/Src/Can_Slider.c:59:6:Can_Slider_Process	3
+../Library_User/Controller_Slider/Src/Can_Slider.c:75:25:Can_Slider_1_Process	16
+../Library_User/Controller_Slider/Src/Can_Slider.c:137:6:Can_Slider_2_Process	1
+../Library_User/Controller_Slider/Src/Can_Slider.c:144:6:Can_Vcu_Send_Slider	1
+../Library_User/Controller_Slider/Src/Can_Slider.c:154:6:Can_Slider_IsAlive	2

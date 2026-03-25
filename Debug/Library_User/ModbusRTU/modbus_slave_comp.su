@@ -1,7 +1,8 @@
-../Library_User/ModbusRTU/modbus_slave_comp.c:31:17:ModbusSlaveComp_GetStatus	4	static
-../Library_User/ModbusRTU/modbus_slave_comp.c:37:6:PacketComp_Init	4	static
-../Library_User/ModbusRTU/modbus_slave_comp.c:48:6:ModbusSlaveComp_Init	8	static
-../Library_User/ModbusRTU/modbus_slave_comp.c:54:6:ModbusSlaveComp_DecodeMessage	16	static
-../Library_User/ModbusRTU/modbus_slave_comp.c:77:6:ModbusComp_checkIfEndOfMessage	4	static
-../Library_User/ModbusRTU/modbus_slave_comp.c:99:6:ModbusSlaverComp_SendData	16	static
-../Library_User/ModbusRTU/modbus_slave_comp.c:104:6:ModbusSlaveComp_Run	8	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:33:17:ModbusSlaveComp_GetStatus	4	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:39:6:PacketComp_Init	4	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:50:6:ModbusSlaveComp_Init	8	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:57:6:ModbusSlaveComp_DecodeMessage	16	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:80:6:ModbusComp_checkIfEndOfMessage	4	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:102:6:ModbusSlaverComp_SendData	16	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:107:6:ModbusSlaveComp_Run	8	static
+../Library_User/ModbusRTU/modbus_slave_comp.c:142:6:ModbusSlaveComp_IsOnline	16	static

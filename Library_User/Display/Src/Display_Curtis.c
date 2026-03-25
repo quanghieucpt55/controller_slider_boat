@@ -1033,17 +1033,35 @@ void display_main_error(void) {
     char title_text[] = "ERROR STATE";
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(title_text)/2)*6), 5, title_text);
     
-    // Hiển thị lỗi chính
-    char error_text[] = "Critical Error!";
-    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(error_text)/2)*6), 20, error_text);
+    char fault_level_text[20];
+    if (VCU_HasCriticalFaultActive()) {
+        strcpy(fault_level_text, "Critical Fault");
+    } else if (VCU_HasSystemFaultActive()) {
+        strcpy(fault_level_text, "System Fault");
+    } else {
+        strcpy(fault_level_text, "Fault Cleared");
+    }
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(fault_level_text)/2)*6), 20, fault_level_text);
+
+    char fault_source_text[20];
+    if (vcu_ctx.inputs.driver_can_lost) {
+        strcpy(fault_source_text, "Cause: Driver CAN");
+    } else if (vcu_ctx.inputs.hmi_lost) {
+        strcpy(fault_source_text, "Cause: HMI Lost");
+    } else if (vcu_ctx.inputs.bms_critical_error) {
+        strcpy(fault_source_text, "Cause: BMS");
+    } else if (vcu_ctx.inputs.slider_critical_error) {
+        strcpy(fault_source_text, "Cause: Slider");
+    } else {
+        strcpy(fault_source_text, "Cause: Unknown");
+    }
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(fault_source_text)/2)*6), 35, fault_source_text);
     
-    char select_text[20];
-    const vcu_state_outputs_t *outputs = VCU_StateOutputs();
-    sprintf(select_text, "Motor: %s", outputs->disable_motor ? "DISABLE" : "ENABLE");
-    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(select_text)/2)*6), 35, select_text);
-    
-    char hint_text[] = "ENTER: Details";
-    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(hint_text)/2)*6), 50, hint_text);
+    char debug_text[20];
+    sprintf(debug_text, "R:%u E:%04lX",
+            (unsigned int)can_slider.effective_raw_err_code,
+            (unsigned long)can_slider.effective_error_code);
+    ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(debug_text)/2)*6), 50, debug_text);
     
     updateDisplay();
 }
