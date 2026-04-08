@@ -1,6 +1,6 @@
 Library_User/Controller_Slider/Src/Can_Slider.o: \
  ../Library_User/Controller_Slider/Src/Can_Slider.c \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h \
  ../Core/Inc/main.h ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -37,7 +37,7 @@ Library_User/Controller_Slider/Src/Can_Slider.o: \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:

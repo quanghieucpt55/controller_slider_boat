@@ -7,6 +7,8 @@
 
 #include "Led_Error.h"
 
+led_error_ctrl_t led_error_ctrl = {0};
+
 /**
  * Thu thập tất cả lỗi từ BMS và Slider vào mảng
  * error_list: Mảng để lưu danh sách mã lỗi (1-18)

@@ -1,9 +1,10 @@
 Library_User/Boat/Log/boat_log.o: ../Library_User/Boat/Log/boat_log.c \
  ../Library_User/Boat/Log/boat_log.h ../Core/Inc/cytypes.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Storage/extern_rom.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Storage/extern_rom.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Storage/24Cxx.h \
  ../Core/Inc/realtime.h ../Core/Inc/cytypes.h ../Core/Inc/global.h \
  ../Library_User/Boat/Log/queue.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h \
  ../Core/Inc/main.h ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -40,21 +41,22 @@ Library_User/Boat/Log/boat_log.o: ../Library_User/Boat/Log/boat_log.c \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/VCU_State/VCU_State.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/IMD/imd.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/ModbusRTU/modbus_slave_base.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/ModbusRTU/modbus_slave_define.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/GNSS/gps_rmc.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/GNSS/gps_types.h
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/VCU_State/VCU_State.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/IMD/imd.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/ModbusRTU/modbus_slave_base.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/ModbusRTU/modbus_slave_define.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/GNSS/gps_rmc.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/GNSS/gps_types.h
 ../Library_User/Boat/Log/boat_log.h:
 ../Core/Inc/cytypes.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Storage/extern_rom.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Storage/extern_rom.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Storage/24Cxx.h:
 ../Core/Inc/realtime.h:
 ../Core/Inc/cytypes.h:
 ../Core/Inc/global.h:
 ../Library_User/Boat/Log/queue.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -92,10 +94,10 @@ C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Cont
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/VCU_State/VCU_State.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/IMD/imd.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/ModbusRTU/modbus_slave_base.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/ModbusRTU/modbus_slave_define.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/GNSS/gps_rmc.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/GNSS/gps_types.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/VCU_State/VCU_State.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/IMD/imd.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/ModbusRTU/modbus_slave_base.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/ModbusRTU/modbus_slave_define.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/GNSS/gps_rmc.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/GNSS/gps_types.h:

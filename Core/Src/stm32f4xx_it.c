@@ -24,6 +24,8 @@
 /* USER CODE BEGIN Includes */
 #include "modbus_rtu_interface.h"
 #include "gnss_uart_dma.h"
+#include "clock.h"
+#include "sim.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

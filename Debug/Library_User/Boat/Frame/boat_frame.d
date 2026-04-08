@@ -1,9 +1,9 @@
 Library_User/Boat/Frame/boat_frame.o: \
  ../Library_User/Boat/Frame/boat_frame.c ../Core/Inc/global.h \
  ../Core/Inc/cytypes.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Network/Sim/sim.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Network/Sim/sim.h \
  ../Core/Inc/cytypes.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h \
  ../Core/Inc/main.h ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -40,15 +40,15 @@ Library_User/Boat/Frame/boat_frame.o: \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h \
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h \
  ../Core/Inc/swconfig.h ../Core/Inc/realtime.h \
  ../Library_User/Boat/Frame/boat_frame.h \
- C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Boat/Log/boat_log.h
+ C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Boat/Log/boat_log.h
 ../Core/Inc/global.h:
 ../Core/Inc/cytypes.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Network/Sim/sim.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Network/Sim/sim.h:
 ../Core/Inc/cytypes.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/BMS_Jihong/jikong_can.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -86,8 +86,8 @@ C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/BMS_
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Controller_Slider/Inc/Can_Slider.h:
 ../Core/Inc/swconfig.h:
 ../Core/Inc/realtime.h:
 ../Library_User/Boat/Frame/boat_frame.h:
-C:/Users/quang/STM32CubeIDE/workspace_1.19.0/Controller_Slider/Library_User/Boat/Log/boat_log.h:
+C:/Users/Admin/STM32CubeIDE/workspace_2.1.1/Controller_Slider/Library_User/Boat/Log/boat_log.h:

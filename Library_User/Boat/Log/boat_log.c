@@ -1,5 +1,6 @@
 #include "boat_log.h"
 #include "extern_rom.h"
+#include "24Cxx.h"
 #include "realtime.h"
 #include "global.h"
 #include "string.h"
@@ -29,6 +30,7 @@ uint16_t countRomEventLog = 0; // Số lượng item còn lại trong ROM
 void BoatEventLog_Init(void)
 {
     q_init(&queueEventLog,sizeof(boat_event_log_t),SIZE_QUEUE,FIFO,1);
+    q_init(&queueRomAddress,sizeof(uint16_t),SIZE_QUEUE,FIFO,1);
     // tìm địa chỉ rom hiện tại
     uint16_t currentAdr=ADR_EVENT_LOG_BASE;
     for(uint8_t i=0;i<TOTAL_EVENT_BOAT_LOG;i++)
@@ -152,6 +154,12 @@ uint8_t BoatEventLog_Dequeue(uint8_t * buf)
     if(q_getCount(&queueEventLog)>0)
     {
         q_pop(&queueEventLog,buf);
+        if(q_getCount(&queueRomAddress)>0)
+        {
+            uint16_t adr = 0;
+            q_pop(&queueRomAddress,&adr);
+            BoatEventLog_DeleteFromRom(adr);
+        }
         return sizeof(boat_event_log_t);
     }
     return 0;

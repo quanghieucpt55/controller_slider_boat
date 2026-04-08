@@ -32,12 +32,14 @@ typedef struct {
 	uint32_t last_blink_time;       // Thời gian nháy cuối cùng
 	uint32_t pause_start_time;      // Thời gian bắt đầu tạm dừng
 } led_error_ctrl_t;
-  
-static led_error_ctrl_t led_error_ctrl = {0};
+
+extern led_error_ctrl_t led_error_ctrl;
 
 #define LED_BLINK_ON_TIME_MS    200   // Thời gian LED sáng (ms)
 #define LED_BLINK_OFF_TIME_MS   200   // Thời gian LED tắt (ms)
 #define LED_PAUSE_AFTER_FIRST_MS 500  // Tạm dừng sau chữ số đầu
 #define LED_PAUSE_BETWEEN_ERRORS_MS  1000 // Tạm dừng giữa các lỗi
+
+void led_process(void);
 
 #endif /* LED_ERROR_LED_ERROR_H_ */

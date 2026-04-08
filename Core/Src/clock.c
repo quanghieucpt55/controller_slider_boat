@@ -1,6 +1,7 @@
 #include "stm32f4xx_hal.h"
 #include "cytypes.h"
 #include "main.h"
+#include "modbus_slave_comp.h"
 
 unsigned int giay=0,ticktac=0;
 unsigned char timeChange=0;

@@ -83,5 +83,7 @@ void display_bms_cellvol_2(void);
 void display_bms_chg_info(void);
 void display_network(void);
 void display_modbus_rs485(void);
+void process_button(void);
+void process_menu(void);
 
 #endif /* DISPLAY_INC_DIPSLAY_CURTIS_H_ */

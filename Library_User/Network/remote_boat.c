@@ -4,6 +4,7 @@
 #include "VCU_State.h"
 #include "realtime.h"
 #include "network.h"
+#include "sim.h"
 #include "boat_log.h"
 
 #define HEADER 0x60

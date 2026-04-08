@@ -6,6 +6,17 @@
  */
 
 #include "display_curtis.h"
+#include <stdio.h>
+#include <string.h>
+
+static uint8_t display_center_x(const char *text)
+{
+    int16_t x = (LCD_WIDTH / 2) - ((int16_t)strlen(text) * 3);
+    if (x < 0) {
+        x = 0;
+    }
+    return (uint8_t)x;
+}
 
 // Button interrupt variables
 volatile uint8_t button_down_pressed = 0;
@@ -181,16 +192,16 @@ void display_can_info_1(void) {
     }
     ST7565_drawstring_anywhere(5, 20, brake_state_text);
 
-    char motor_rpm_text[15];
-    sprintf(motor_rpm_text, "RPM: %u", can_slider.slider_1.motor_rpm);
+    char motor_rpm_text[16];
+    snprintf(motor_rpm_text, sizeof(motor_rpm_text), "RPM: %u", can_slider.slider_1.motor_rpm);
     ST7565_drawstring_anywhere(70, 20, motor_rpm_text);
 
-    char motor_temp_text[15];
-    sprintf(motor_temp_text, "Motor temp: %u", can_slider.slider_1.motor_temp);
+    char motor_temp_text[24];
+    snprintf(motor_temp_text, sizeof(motor_temp_text), "Motor temp: %u", can_slider.slider_1.motor_temp);
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(motor_temp_text)/2)*6), 35, motor_temp_text);
 
-    char con_temp_text[15];
-    sprintf(con_temp_text, "Controller temp: %u", can_slider.slider_1.controller_temp);
+    char con_temp_text[28];
+    snprintf(con_temp_text, sizeof(con_temp_text), "Controller temp: %u", can_slider.slider_1.controller_temp);
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(con_temp_text)/2)*6), 50, con_temp_text);
 
     // Cập nhật màn hình
@@ -221,21 +232,21 @@ void display_can_info_2(void) {
     }
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(error_string)/2)*6), 5, error_string);
 
-    char control_mode_text[15];
+    char control_mode_text[24];
     switch (can_slider.slider_2.control_mode)
     {
-        case 0: strcpy(control_mode_text, "Mode: Accelerator"); break;
-        case 1: strcpy(control_mode_text, "Mode: Can protocol"); break;
-        default: strcpy(control_mode_text, "Mode: ERROR"); break;
+        case 0: snprintf(control_mode_text, sizeof(control_mode_text), "Mode: Accelerator"); break;
+        case 1: snprintf(control_mode_text, sizeof(control_mode_text), "Mode: Can protocol"); break;
+        default: snprintf(control_mode_text, sizeof(control_mode_text), "Mode: ERROR"); break;
     }
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(control_mode_text)/2)*6), 20, control_mode_text);
 
-    char battery_voltage_text[15];
-    sprintf(battery_voltage_text, "Bat Voltage: %.1f V", can_slider.slider_2.battery_voltage);
+    char battery_voltage_text[32];
+    snprintf(battery_voltage_text, sizeof(battery_voltage_text), "Bat Voltage: %.1f V", can_slider.slider_2.battery_voltage);
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(battery_voltage_text)/2)*6), 35, battery_voltage_text);
 
-    char dc_current_text[15];
-    sprintf(dc_current_text, "DC Current: %.1f A", can_slider.slider_2.dc_current);
+    char dc_current_text[32];
+    snprintf(dc_current_text, sizeof(dc_current_text), "DC Current: %.1f A", can_slider.slider_2.dc_current);
     ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(dc_current_text)/2)*6), 50, dc_current_text);
 
     // Cập nhật màn hình
@@ -359,9 +370,6 @@ void display_bms_info(void) {
     // Clear display buffer
     memset(displayBuffer, 0, LCD_BUFFER_SIZE);
 
-    uint32_t current_time = HAL_GetTick();
-    uint8_t blink_state = ((current_time / 500) % 2);
-    
     // Vẽ viền xung quanh màn hình
     ST7565_drawrect(2, 2, LCD_WIDTH - 4, LCD_HEIGHT - 4, 1);
     
@@ -456,14 +464,14 @@ void display_alm_bms(void) {
         count_alm++;
      }
      if (count_alm < 2 && bms.almInfo.dchg_oc) {
-        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Discharge Over Current")/2)*6), name_y[count_alm], "ALM: Discharge Over Current");
+        ST7565_drawstring_anywhere(display_center_x("ALM: Discharge Over Current"), name_y[count_alm], "ALM: Discharge Over Current");
         char level_text[15];
         sprintf(level_text, "Level: %d", bms.almInfo.dchg_oc);
         ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
         count_alm++;
      }
      if (count_alm < 2 && bms.almInfo.chg_oc) {
-        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Charge Over Current")/2)*6), name_y[count_alm], "ALM: Charge Over Current");
+        ST7565_drawstring_anywhere(display_center_x("ALM: Charge Over Current"), name_y[count_alm], "ALM: Charge Over Current");
         char level_text[15];
         sprintf(level_text, "Level: %d", bms.almInfo.chg_oc);
         ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
@@ -477,7 +485,7 @@ void display_alm_bms(void) {
         count_alm++;
      }
      if (count_alm < 2 && bms.almInfo.comm_fault) {
-        ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen("ALM: Communication Fault")/2)*6), name_y[count_alm], "ALM: Communication Fault");
+        ST7565_drawstring_anywhere(display_center_x("ALM: Communication Fault"), name_y[count_alm], "ALM: Communication Fault");
         char level_text[15];
         sprintf(level_text, "Level: %d", bms.almInfo.comm_fault);
         ST7565_drawstring_anywhere((LCD_WIDTH/2)-((strlen(level_text)/2)*6), level_y[count_alm], level_text);
@@ -725,7 +733,7 @@ void display_bms_info_sys(void) {
     
     // Thời gian chạy (giây)
     char runtime_text[30];
-    sprintf(runtime_text, "BMSRuntime: %u", bms.info.runtime_s);
+    snprintf(runtime_text, sizeof(runtime_text), "BMSRuntime: %lu", (unsigned long)bms.info.runtime_s);
     ST7565_drawstring_anywhere(5, 5, runtime_text);
     
     // Dòng sưởi

@@ -38,4 +38,5 @@ uint8_t Network_GetCurrentInterface(void);
 void Network_RequireSendImmediate(void);
 void Network_TaskSendImmediate(void);
 uint8_t IsNetwork_Ready(void);
+cystatus Network_WriteConfig(uint8_t * data,uint8_t len_data);
 #endif
