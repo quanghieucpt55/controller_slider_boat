@@ -1,7 +1,0 @@
-../Core/Src/realtime.c:16:6:RealTime_Init	1
-../Core/Src/realtime.c:22:9:ValidTime	21
-../Core/Src/realtime.c:39:10:RealtimeConvertValueToInterger	1
-../Core/Src/realtime.c:50:6:Realtime_Run	2
-../Core/Src/realtime.c:72:6:Realtime_Update	1
-../Core/Src/realtime.c:89:6:Realtime_UpdateNum	1
-../Core/Src/realtime.c:107:6:Realtime_UpdateWithDayOfWeek	1

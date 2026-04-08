@@ -1,4 +1,0 @@
-../Core/Src/system_update.c:21:6:SystemUpdate_Init	4	static
-../Core/Src/system_update.c:26:6:SystemUpdate_Require	16	static
-../Core/Src/system_update.c:32:6:CheckBootloaderJump	8	static
-../Core/Src/system_update.c:43:6:SystemUpdate_Run	16	static
